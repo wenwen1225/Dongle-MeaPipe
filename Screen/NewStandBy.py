@@ -80,13 +80,13 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.camera = QtMultimedia.QCamera()
         self.camera.setViewfinder(self.cameraViewfinder)
         self.camera.start() #開啟
-        print("Camera started.")
+        print("Camera4 started.")
 
     # 關閉攝影機
     def stopCamera(self):
         if self.camera:
             self.camera.stop()
-            print("Camera stopped.")
+            print("Camera4 stopped.")
 
     # 關閉程式
     def closeEvent(self, event):

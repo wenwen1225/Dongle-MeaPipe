@@ -1,5 +1,5 @@
 import os
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
 import threading
 from KL_MP_Mix import detect_hand_gestures
 
@@ -9,6 +9,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi()
+        self.setupCamera()
         #self.start_hand_gestures_detection()
 
     def setupUi(self):
@@ -53,7 +54,6 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         _translate = QtCore.QCoreApplication.translate
         self.label.setText(_translate("MainWindow", "請選擇團隊名稱"))
 
-    # 按鈕+圖片
     def add_button_with_icon(self, text, icon_filename):
         button_layout = QtWidgets.QHBoxLayout()
         button_layout.setAlignment(QtCore.Qt.AlignCenter)
@@ -74,7 +74,11 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         button_layout.addWidget(button)
 
         self.verticalLayoutGroupBox.addLayout(button_layout)
+
+        # 按下按鈕後攝影機停止
+        button.clicked.connect(self.stopCamera)
         button.clicked.connect(lambda: self.role_selected.emit(text))
+
         return button
 
     def start_hand_gestures_detection(self):
@@ -84,9 +88,8 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         for gesture in detect_hand_gestures():
             self.handle_gesture(gesture)
 
-    # 手勢辨識
+    # 腳色名稱 之後要改成連sql
     def handle_gesture(self, gesture):
-        #print(f"Gesture detected: {gesture}")
         if gesture == '1':
             self.highlight_button(self.button1)
             self.role_selected.emit("名稱1")
@@ -97,12 +100,22 @@ class Ui_NewSelectName(QtWidgets.QWidget):
             self.highlight_button(self.button3)
             self.role_selected.emit("名稱3")
 
-    # 按鈕的紅框
     def highlight_button(self, button):
         self.reset_button_styles()
-        button.setStyleSheet("border: 5px solid red;")  
+        button.setStyleSheet("border: 5px solid red;")
 
-    # 取消按鈕框的樣式
+    # 攝影機開啟
+    def setupCamera(self):
+        self.camera = QtMultimedia.QCamera()
+        self.camera.start()
+        print("Camera started.")
+
+    # 攝影機關閉
+    def stopCamera(self):
+        if self.camera:
+            self.camera.stop()
+            print("Camera0 stopped.")
+
     def reset_button_styles(self):
         self.button1.setStyleSheet("")
         self.button2.setStyleSheet("")
