@@ -79,8 +79,12 @@ class NewStackManager(QMainWindow):
             self.stop_current_camera()
             self.current_page_index += 1
             self.centralwidget.layout().itemAt(0).widget().setParent(None)
-            self.pages[self.current_page_index].set_team_name(role)
-            self.centralwidget.layout().insertWidget(0, self.pages[self.current_page_index])
+            
+            next_page = self.pages[self.current_page_index]
+            if isinstance(next_page, Ui_NewGameInstructions):
+                next_page.set_team_name(role)
+
+            self.centralwidget.layout().insertWidget(0, next_page)
             print(f"Role selected: {role}, switched to page index: {self.current_page_index}")
             self.start_camera_if_needed(self.current_page_index)
 

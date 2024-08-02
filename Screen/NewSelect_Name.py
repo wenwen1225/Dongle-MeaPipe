@@ -74,8 +74,6 @@ class Ui_NewSelectName(QtWidgets.QWidget):
 
         self.verticalLayoutGroupBox.addLayout(button_layout)
 
-        # 按下按鈕後攝影機停止
-        button.clicked.connect(self.stopCamera)
         button.clicked.connect(lambda: self.role_selected.emit(text))
 
         return button

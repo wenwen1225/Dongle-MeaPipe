@@ -77,7 +77,6 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         icon_label.setFixedSize(200, 200)
         icon_label.setScaledContents(True)
 
-        button.clicked.connect(self.stopCamera)
         button.clicked.connect(lambda: self.on_difficulty_selected(text))
 
         layout = QtWidgets.QHBoxLayout()
