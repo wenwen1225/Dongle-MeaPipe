@@ -57,7 +57,6 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.pushButton.clicked.connect(self.close)  # 按下關閉視窗
         self.verticalLayout.addWidget(self.pushButton, alignment=QtCore.Qt.AlignHCenter | QtCore.Qt.AlignBottom)
 
-        self.setupCamera()  # 使用攝影機
         self.retranslateUi()
 
     # 文字顯示
@@ -80,13 +79,13 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.camera = QtMultimedia.QCamera()
         self.camera.setViewfinder(self.cameraViewfinder)
         self.camera.start() #開啟
-        print("Camera4 started.")
+        print("Camera3 started.")
 
     # 關閉攝影機
     def stopCamera(self):
         if self.camera:
             self.camera.stop()
-            print("Camera4 stopped.")
+            print("Camera3 stopped.")
 
     # 關閉程式
     def closeEvent(self, event):

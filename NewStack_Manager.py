@@ -1,4 +1,3 @@
-import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QWidget
 from Screen.NewSelect_Name import Ui_NewSelectName
@@ -41,64 +40,57 @@ class NewStackManager(QMainWindow):
                 page.role_selected.connect(self.show_next_page_with_role)
 
     def start_camera_if_needed(self, index):
-        # 確保每個頁面都啟動攝影機
         page = self.pages[index]
-        if hasattr(page, 'camera'):
-            self.current_camera = page.camera
-            if self.current_camera:
-                self.current_camera.start()
-                print(f"Camera started on page index: {index}")
+        if hasattr(page, 'setupCamera'):
+            page.setupCamera()
+            self.current_camera = page
+            print(f"Camera started on page index: {index}")
         else:
             print(f"No camera found on page index: {index}")
 
     def stop_current_camera(self):
-        # 停止當前頁面的攝影機
-        if self.current_camera:
-            self.current_camera.stop()
+        if self.current_camera and hasattr(self.current_camera, 'stopCamera'):
+            self.current_camera.stopCamera()
             print(f"Camera stopped on page index: {self.current_page_index}")
             self.current_camera = None
 
-    # 下一步
     def show_next_page(self):
         if self.current_page_index < len(self.pages) - 1:
             self.stop_current_camera()
             self.current_page_index += 1
             self.centralwidget.layout().itemAt(0).widget().setParent(None)
             self.centralwidget.layout().insertWidget(0, self.pages[self.current_page_index])
-            print(f"Switched to page index: {self.current_page_index}") 
+            print(f"Switched to page index: {self.current_page_index}")
             self.start_camera_if_needed(self.current_page_index)
 
-    # 上一步
     def show_previous_page(self):
         if self.current_page_index > 0:
             self.stop_current_camera()
             self.current_page_index -= 1
             self.centralwidget.layout().itemAt(0).widget().setParent(None)
             self.centralwidget.layout().insertWidget(0, self.pages[self.current_page_index])
-            print(f"Switched to page index: {self.current_page_index}")  
+            print(f"Switched to page index: {self.current_page_index}")
             self.start_camera_if_needed(self.current_page_index)
         else:
             print("Already at the first page, can't go back.")
     
-    # 選擇名稱
     def show_next_page_with_role(self, role):
         if self.current_page_index < len(self.pages) - 1:
-            if isinstance(self.pages[self.current_page_index + 1], Ui_NewGameInstructions):
-                self.stop_current_camera()
-                self.current_page_index += 1
-                self.centralwidget.layout().itemAt(0).widget().setParent(None)
-                self.pages[self.current_page_index].set_team_name(role)
-                self.centralwidget.layout().insertWidget(0, self.pages[self.current_page_index])
-                print(f"Role selected: {role}, switched to page index: {self.current_page_index}")
-                self.start_camera_if_needed(self.current_page_index)
+            self.stop_current_camera()
+            self.current_page_index += 1
+            self.centralwidget.layout().itemAt(0).widget().setParent(None)
+            self.pages[self.current_page_index].set_team_name(role)
+            self.centralwidget.layout().insertWidget(0, self.pages[self.current_page_index])
+            print(f"Role selected: {role}, switched to page index: {self.current_page_index}")
+            self.start_camera_if_needed(self.current_page_index)
 
-    # 選擇困難度
     def on_difficulty_selected(self, difficulty):
         self.selected_difficulty = difficulty
         self.show_next_page()
-        print(f"Difficulty selected: {difficulty}")  
+        print(f"Difficulty selected: {difficulty}")
 
 if __name__ == '__main__':
+    import sys
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = NewStackManager()
     MainWindow.show()

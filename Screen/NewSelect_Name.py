@@ -9,8 +9,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi()
-        self.setupCamera()
-        #self.start_hand_gestures_detection()
+        self.start_hand_gestures_detection()
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -88,7 +87,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         for gesture in detect_hand_gestures():
             self.handle_gesture(gesture)
 
-    # 腳色名稱 之後要改成連sql
+    # 角色名稱 之後要改成連sql
     def handle_gesture(self, gesture):
         if gesture == '1':
             self.highlight_button(self.button1)
@@ -108,7 +107,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
     def setupCamera(self):
         self.camera = QtMultimedia.QCamera()
         self.camera.start()
-        print("Camera started.")
+        print("Camera0 started.")
 
     # 攝影機關閉
     def stopCamera(self):

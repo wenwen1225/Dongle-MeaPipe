@@ -1,9 +1,9 @@
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtWidgets, QtGui, QtCore, QtMultimedia
 import os 
 
 class Ui_NewSelectDifficulty(QtWidgets.QWidget):
-    difficulty_selected = QtCore.pyqtSignal(str)  
-    prevButton_clicked = QtCore.pyqtSignal() 
+    difficulty_selected = QtCore.pyqtSignal(str)
+    prevButton_clicked = QtCore.pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -19,7 +19,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.verticalLayout.setAlignment(QtCore.Qt.AlignTop)  
+        self.verticalLayout.setAlignment(QtCore.Qt.AlignTop)
 
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setFont(QtGui.QFont("標楷體", 48))
@@ -33,8 +33,8 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
         self.groupBox = QtWidgets.QGroupBox(self.centralwidget)
         self.groupBox.setObjectName("groupBox")
-        self.groupBox.setStyleSheet("QGroupBox { border: none; }")  
-        self.groupBox.setTitle("")  
+        self.groupBox.setStyleSheet("QGroupBox { border: none; }")
+        self.groupBox.setTitle("")
 
         self.verticalLayoutGroupBox = QtWidgets.QVBoxLayout(self.groupBox)
         self.verticalLayoutGroupBox.setObjectName("verticalLayoutGroupBox")
@@ -51,20 +51,18 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         self.prevButton = QtWidgets.QPushButton(self.centralwidget)
         self.prevButton.setFont(QtGui.QFont("標楷體", 18))
         self.prevButton.setMinimumHeight(100)
-        self.prevButton.setFixedWidth(400) 
+        self.prevButton.setFixedWidth(400)
         self.verticalLayout.addWidget(self.prevButton, alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft)
         self.prevButton.clicked.connect(self.on_prev_clicked)
 
         self.setLayout(self.verticalLayout)
         self.retranslateUi()
 
-    # 文字顯示
     def retranslateUi(self):
         _translate = QtCore.QCoreApplication.translate
         self.label.setText(_translate("MainWindow", "難易度選擇"))
         self.prevButton.setText(_translate("MainWindow", "上一步"))
 
-    # 難易度選擇+手勢圖片
     def add_button_with_icon(self, text, icon_filename):
         button = QtWidgets.QPushButton(self.groupBox)
         button.setFont(QtGui.QFont("標楷體", 30))
@@ -77,8 +75,9 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         icon_label = QtWidgets.QLabel(self.groupBox)
         icon_label.setPixmap(pixmap)
         icon_label.setFixedSize(200, 200)
-        icon_label.setScaledContents(True)  
+        icon_label.setScaledContents(True)
 
+        button.clicked.connect(self.stopCamera)
         button.clicked.connect(lambda: self.on_difficulty_selected(text))
 
         layout = QtWidgets.QHBoxLayout()
@@ -88,13 +87,22 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         layout.addStretch(1)
         self.verticalLayoutGroupBox.addLayout(layout)
 
-    # 難易度
     def on_difficulty_selected(self, difficulty):
         self.difficulty_selected.emit(difficulty)
 
-    # 上一步
     def on_prev_clicked(self):
+        self.stopCamera()  # 停止攝影機
         self.prevButton_clicked.emit()
+
+    def setupCamera(self):
+        self.camera = QtMultimedia.QCamera()
+        self.camera.start()
+        print("Camera2 started.")
+
+    def stopCamera(self):
+        if hasattr(self, 'camera') and self.camera:
+            self.camera.stop()
+            print("Camera2 stopped.")
 
 if __name__ == "__main__":
     import sys

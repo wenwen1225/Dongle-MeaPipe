@@ -1,7 +1,7 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
 
 class Ui_NewGameInstructions(QtWidgets.QWidget):
-    nextButton_clicked = QtCore.pyqtSignal() 
+    nextButton_clicked = QtCore.pyqtSignal()
     prevButton_clicked = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
@@ -101,13 +101,26 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         self.label_4.setText(_translate("MainWindow", "閱讀完畢後請按下一步開始遊戲!"))
 
     def on_next_clicked(self):
+        self.stopCamera()
         self.nextButton_clicked.emit()
 
     def on_prev_clicked(self):
+        self.stopCamera()
         self.prevButton_clicked.emit()
 
     def set_team_name(self, team_name):
-        self.label_5.setText(f"團隊名稱: {team_name}")  
+        self.label_5.setText(f"團隊名稱: {team_name}")
+
+    def setupCamera(self):
+        self.camera = QtMultimedia.QCamera()
+        self.camera.start()
+        print("Camera1 started.")
+
+    def stopCamera(self):
+        if hasattr(self, 'camera') and self.camera:
+            self.camera.stop()
+            print("Camera1 stopped.")
+
 
 if __name__ == "__main__":
     import sys
