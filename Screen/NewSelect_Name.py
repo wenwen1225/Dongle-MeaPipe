@@ -9,7 +9,9 @@ class Ui_NewSelectName(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi()
-        self.start_hand_gestures_detection()
+        self.camera = None
+        self.hand_gestures_thread = None
+        self.stop_signal = threading.Event()  # 手勢停止
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -40,6 +42,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.verticalLayoutGroupBox = QtWidgets.QVBoxLayout(self.groupBox)
         self.verticalLayoutGroupBox.setObjectName("verticalLayoutGroupBox")
 
+        # 團隊按鈕，之後連資料庫
         self.button1 = self.add_button_with_icon("名稱1", "role1.png")
         self.button2 = self.add_button_with_icon("名稱2", "role2.png")
         self.button3 = self.add_button_with_icon("名稱3", "role3.png")
@@ -53,6 +56,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         _translate = QtCore.QCoreApplication.translate
         self.label.setText(_translate("MainWindow", "請選擇團隊名稱"))
 
+    # 按鈕+圖片
     def add_button_with_icon(self, text, icon_filename):
         button_layout = QtWidgets.QHBoxLayout()
         button_layout.setAlignment(QtCore.Qt.AlignCenter)
@@ -73,50 +77,71 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         button_layout.addWidget(button)
 
         self.verticalLayoutGroupBox.addLayout(button_layout)
-
-        button.clicked.connect(lambda: self.role_selected.emit(text))
-
+        button.clicked.connect(lambda: self.role_selected.emit(text))  # emit signal only
         return button
-
+    
+    # 手勢開始
     def start_hand_gestures_detection(self):
-        threading.Thread(target=self.hand_gestures_detection, daemon=True).start()
+        self.stop_signal.clear()  # 清除資料
+        self.setupCamera()
+        self.hand_gestures_thread = threading.Thread(target=self.hand_gestures_detection, daemon=True)
+        self.hand_gestures_thread.start()
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
+            if self.stop_signal.is_set():  # 檢查要不要停止
+                break
             self.handle_gesture(gesture)
-
-    # 角色名稱 之後要改成連sql
+            self.gesture_detected.emit(gesture) 
+            
+    # 按鈕手勢比對        
     def handle_gesture(self, gesture):
+        print(f"Detected-0 gesture: {gesture}") # 測試有沒有抓到手勢
         if gesture == '1':
             self.highlight_button(self.button1)
             self.role_selected.emit("名稱1")
+            self.stop_signal.set()
         elif gesture == '2':
             self.highlight_button(self.button2)
             self.role_selected.emit("名稱2")
+            self.stop_signal.set()
         elif gesture == '3':
             self.highlight_button(self.button3)
             self.role_selected.emit("名稱3")
+            self.stop_signal.set()
 
+    # 按鈕的紅框
     def highlight_button(self, button):
         self.reset_button_styles()
         button.setStyleSheet("border: 5px solid red;")
 
-    # 攝影機開啟
-    def setupCamera(self):
-        self.camera = QtMultimedia.QCamera()
-        self.camera.start()
-        print("Camera0 started.")
-
-    # 攝影機關閉
-    def stopCamera(self):
-        if self.camera:
-            self.camera.stop()
-            print("Camera0 stopped.")
-
+    # 取消紅框 還未用好?
     def reset_button_styles(self):
         self.button1.setStyleSheet("")
         self.button2.setStyleSheet("")
         self.button3.setStyleSheet("")
+
+    # 開啟攝影機
+    def setupCamera(self):
+        if self.camera is None:
+            self.camera = QtMultimedia.QCamera()
+            self.camera.start()
+            print("Camera0 started.")
+
+    # 關閉攝影機
+    def stopCamera(self):
+        if self.camera is not None:
+            self.camera.stop()
+            print("Camera0 stopped.")
+            self.camera = None
+
+    # 關閉資訊
+    def closeEvent(self, event):
+        self.stopCamera()
+        if self.hand_gestures_thread is not None:
+            self.stop_signal.set()  
+            self.hand_gestures_thread.join()  
+        super().closeEvent(event)
 
 if __name__ == "__main__":
     import sys

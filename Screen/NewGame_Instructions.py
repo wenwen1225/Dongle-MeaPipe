@@ -1,4 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
+import threading
+from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewGameInstructions(QtWidgets.QWidget):
     nextButton_clicked = QtCore.pyqtSignal()
@@ -7,6 +9,9 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi()
+        self.camera = None
+        self.hand_gestures_thread = None
+        self.stop_signal = threading.Event()  #  手勢停止
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -100,25 +105,65 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         self.label_3.setText(_translate("MainWindow", "→"))
         self.label_4.setText(_translate("MainWindow", "閱讀完畢後請按下一步開始遊戲!"))
 
+    # 下一步
     def on_next_clicked(self):
         self.nextButton_clicked.emit()
 
+    # 前一步
     def on_prev_clicked(self):
         self.prevButton_clicked.emit()
 
+    # 上一頁的團隊名稱
     def set_team_name(self, team_name):
         self.label_5.setText(f"團隊名稱: {team_name}")
 
-    def setupCamera(self):
-        self.camera = QtMultimedia.QCamera()
-        self.camera.start()
-        print("Camera1 started.")
+    # 手勢開始
+    def start_hand_gestures_detection(self):
+        self.stop_signal.clear()  # 清除資料
+        self.setupCamera()
+        self.hand_gestures_thread = threading.Thread(target=self.hand_gestures_detection, daemon=True)
+        self.hand_gestures_thread.start()
 
+    # 手勢停止
+    def stop_hand_gestures_detection(self):
+        if self.hand_gestures_thread is not None:
+            self.hand_gestures_thread.join() 
+
+    def hand_gestures_detection(self):
+        for gesture in detect_hand_gestures():
+            if self.stop_signal.is_set():  # 檢查要不要停止
+                break
+            self.handle_gesture(gesture)
+
+    # 按鈕手勢對比
+    def handle_gesture(self, gesture):
+        print(f"Detected-1 gesture: {gesture}")
+        if gesture == 'back':
+            self.on_prev_clicked()
+            self.stop_signal.set()
+        elif gesture == 'ok':
+            self.on_next_clicked()
+            self.stop_signal.set()
+
+    # 攝影機開啟
+    def setupCamera(self):
+        if self.camera is None:
+            self.camera = QtMultimedia.QCamera()
+            self.camera.start()
+            print("Camera1 started.")
+
+    # 攝影機關閉
     def stopCamera(self):
         if hasattr(self, 'camera') and self.camera:
             self.camera.stop()
             print("Camera1 stopped.")
+            self.camera = None
 
+    # 關閉資訊
+    def closeEvent(self, event):
+        self.stopCamera()
+        self.stop_hand_gestures_detection()
+        super().closeEvent(event)
 
 if __name__ == "__main__":
     import sys

@@ -25,34 +25,33 @@ class NewStackManager(QMainWindow):
 
         self.setCentralWidget(self.centralwidget)
         self.setup_connections()
-        self.start_camera_if_needed(self.current_page_index)
+        self.start_camera_and_detection(self.current_page_index)
 
     def setup_connections(self):
         for page in self.pages:
-            if isinstance(page, Ui_NewGameInstructions) or isinstance(page, Ui_NewSelectDifficulty) or isinstance(page, Ui_NewStandBy):
-                if hasattr(page, 'nextButton_clicked'):
-                    page.nextButton_clicked.connect(self.show_next_page)
-                if hasattr(page, 'prevButton_clicked'):
-                    page.prevButton_clicked.connect(self.show_previous_page)
-            if isinstance(page, Ui_NewSelectDifficulty):
-                page.difficulty_selected.connect(self.on_difficulty_selected)
-            if isinstance(page, Ui_NewSelectName):
+            if hasattr(page, 'nextButton_clicked'):
+                page.nextButton_clicked.connect(self.show_next_page)
+            if hasattr(page, 'prevButton_clicked'):
+                page.prevButton_clicked.connect(self.show_previous_page)
+            if hasattr(page, 'role_selected'):
                 page.role_selected.connect(self.show_next_page_with_role)
+            if hasattr(page, 'difficulty_selected'):
+                page.difficulty_selected.connect(self.on_difficulty_selected)
 
-    def start_camera_if_needed(self, index):
+    def start_camera_and_detection(self, index):
         page = self.pages[index]
         if hasattr(page, 'setupCamera'):
             page.setupCamera()
-            self.current_camera = page
-            print(f"Camera started on page index: {index}")
-        else:
-            print(f"No camera found on page index: {index}")
+        if hasattr(page, 'start_hand_gestures_detection'):
+            page.start_hand_gestures_detection()
+        self.current_camera = page
+        print(f"Camera started on page index: {index}")
 
     def stop_current_camera(self):
         if self.current_camera and hasattr(self.current_camera, 'stopCamera'):
             self.current_camera.stopCamera()
-            print(f"Camera stopped on page index: {self.current_page_index}")
             self.current_camera = None
+            print(f"Camera stopped on page index: {self.current_page_index}")
 
     def show_next_page(self):
         if self.current_page_index < len(self.pages) - 1:
@@ -61,7 +60,7 @@ class NewStackManager(QMainWindow):
             self.centralwidget.layout().itemAt(0).widget().setParent(None)
             self.centralwidget.layout().insertWidget(0, self.pages[self.current_page_index])
             print(f"Switched to page index: {self.current_page_index}")
-            self.start_camera_if_needed(self.current_page_index)
+            self.start_camera_and_detection(self.current_page_index)
 
     def show_previous_page(self):
         if self.current_page_index > 0:
@@ -70,7 +69,7 @@ class NewStackManager(QMainWindow):
             self.centralwidget.layout().itemAt(0).widget().setParent(None)
             self.centralwidget.layout().insertWidget(0, self.pages[self.current_page_index])
             print(f"Switched to page index: {self.current_page_index}")
-            self.start_camera_if_needed(self.current_page_index)
+            self.start_camera_and_detection(self.current_page_index)
         else:
             print("Already at the first page, can't go back.")
     
@@ -86,7 +85,7 @@ class NewStackManager(QMainWindow):
 
             self.centralwidget.layout().insertWidget(0, next_page)
             print(f"Role selected: {role}, switched to page index: {self.current_page_index}")
-            self.start_camera_if_needed(self.current_page_index)
+            self.start_camera_and_detection(self.current_page_index)
 
     def on_difficulty_selected(self, difficulty):
         self.selected_difficulty = difficulty
