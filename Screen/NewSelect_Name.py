@@ -92,7 +92,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
             if self.stop_signal.is_set():  # 檢查要不要停止
                 break
             self.handle_gesture(gesture)
-            self.gesture_detected.emit(gesture) 
+            #self.gesture_detected.emit(gesture) 
             
     # 按鈕手勢比對        
     def handle_gesture(self, gesture):

@@ -72,12 +72,15 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.prevButton.setText(_translate("MainWindow", "上一步"))
         self.pushButton.setText(_translate("MainWindow", "OK"))
 
+    # 難易度
     def set_difficulty(self, difficulty):
         self.difficulty_label.setText(f"難易度: {difficulty}")
 
+    # 上一步
     def on_prev_clicked(self):
         self.prevButton_clicked.emit()
 
+    # 手勢開始
     def start_hand_gestures_detection(self):
         self.stop_signal.clear()  # 确保停止信号被清除
         self.setupCamera()
@@ -85,17 +88,18 @@ class Ui_NewStandBy(QtWidgets.QWidget):
             self.hand_gestures_thread = threading.Thread(target=self.hand_gestures_detection, daemon=True)
             self.hand_gestures_thread.start()
 
+    # 手勢停止
     def stop_hand_gestures_detection(self):
         if self.hand_gestures_thread is not None and self.hand_gestures_thread.is_alive():
-            self.stop_signal.set()  # 设置停止信号
-            #self.hand_gestures_thread.join()  # 等待手势检测线程结束
+            self.stop_signal.set()  
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
-            if self.stop_signal.is_set():  # 检查是否需要停止
+            if self.stop_signal.is_set():  # 檢查要不要停止
                 break
             self.handle_gesture(gesture)
 
+    # 按鈕手勢比對
     def handle_gesture(self, gesture):
         print(f"Detected-3 gesture: {gesture}")
         if gesture == 'back':
@@ -104,23 +108,26 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         elif gesture == 'ok':
             self.closeEvent(QtGui.QCloseEvent())
 
+    # 攝影機開起
     def setupCamera(self):
         self.camera = QtMultimedia.QCamera()
         self.camera.setViewfinder(self.cameraViewfinder)
-        self.camera.start()  # 开启摄像机
+        self.camera.start()  
         print("Camera3 started.")
 
+    # 攝影機關閉
     def stopCamera(self):
         if self.camera:
             self.camera.stop()
             print("Camera3 stopped.")
             self.camera = None
 
+    # 關閉資訊
     def closeEvent(self, event):
-        self.stopCamera()  # 停止摄像机
-        self.stop_hand_gestures_detection()  # 停止手势检测
-        event.accept()  # 允许关闭事件
-        QtWidgets.QApplication.quit()  # 关闭应用程序
+        self.stopCamera()  
+        self.stop_hand_gestures_detection()  
+        event.accept()  # 關閉事件
+        QtWidgets.QApplication.quit()  # 關閉整個視窗
 
 if __name__ == "__main__":
     import sys
