@@ -1,6 +1,8 @@
 import os
-from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
+import random
 import threading
+from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
+from PyQt5.QtCore import Qt
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewSelectName(QtWidgets.QWidget):
@@ -8,10 +10,11 @@ class Ui_NewSelectName(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setupUi()
         self.camera = None
         self.hand_gestures_thread = None
         self.stop_signal = threading.Event()  # 手勢停止
+        self.button_texts = self.load_button_texts('C:\\mypython4\\pack\\Data\\camp.txt')
+        self.setupUi()
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -42,10 +45,16 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.verticalLayoutGroupBox = QtWidgets.QVBoxLayout(self.groupBox)
         self.verticalLayoutGroupBox.setObjectName("verticalLayoutGroupBox")
 
-        # 團隊按鈕，之後連資料庫
-        self.button1 = self.add_button_with_icon("名稱1", "role1.png")
-        self.button2 = self.add_button_with_icon("名稱2", "role2.png")
-        self.button3 = self.add_button_with_icon("名稱3", "role3.png")
+        # 團隊按鈕，依照 camp.txt 中的文字
+        if len(self.button_texts) >= 3:
+            icon_paths = ['role1.png', 'role2.png', 'role3.png']
+            selected_texts = random.sample(self.button_texts, 3)  # 隨機選擇 3 行文字
+
+            self.button1 = self.add_button_with_icon(selected_texts[0], icon_paths[0])
+            self.button2 = self.add_button_with_icon(selected_texts[1], icon_paths[1])
+            self.button3 = self.add_button_with_icon(selected_texts[2], icon_paths[2])
+        else:
+            print("camp.txt 文件中需要至少有 3 行文字")
 
         self.verticalLayout.addWidget(self.groupBox)
         self.setLayout(self.verticalLayout)
@@ -80,6 +89,12 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         button.clicked.connect(lambda: self.role_selected.emit(text))  # emit signal only
         return button
     
+    def load_button_texts(self, file_path):
+        with open(file_path, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        # 移除空行並返回文本列表
+        return [line.strip() for line in lines if line.strip()]
+
     # 手勢開始
     def start_hand_gestures_detection(self):
         self.stop_signal.clear()  # 清除資料
@@ -99,15 +114,15 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         print(f"Detected-0 gesture: {gesture}") # 測試有沒有抓到手勢
         if gesture == '1':
             self.highlight_button(self.button1)
-            self.role_selected.emit("名稱1")
+            self.role_selected.emit(self.button1.text())
             self.stop_signal.set()
         elif gesture == '2':
             self.highlight_button(self.button2)
-            self.role_selected.emit("名稱2")
+            self.role_selected.emit(self.button2.text())
             self.stop_signal.set()
         elif gesture == '3':
             self.highlight_button(self.button3)
-            self.role_selected.emit("名稱3")
+            self.role_selected.emit(self.button3.text())
             self.stop_signal.set()
 
     # 按鈕的紅框
