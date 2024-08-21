@@ -2,9 +2,21 @@ import cv2
 import mediapipe as mp
 import math
 import os
+import sys
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
+
+PWD = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(1, os.path.join(PWD, '..'))
+
+from utils.ExampleHelper import get_device_usb_speed_by_port_id
+from utils.ExamplePostProcess import post_process_tiny_yolo_v3
+
+SCPU_FW_PATH = os.path.join(PWD, '../../res/firmware/KL520/fw_scpu.bin')
+NCPU_FW_PATH = os.path.join(PWD, '../../res/firmware/KL520/fw_ncpu.bin')
+MODEL_FILE_PATH = os.path.join(PWD, '../../res/models/KL520/tiny_yolo_v3/models_520.nef')
+
 
 # 根據兩點的座標，計算角度
 def vector_2d_angle(v1, v2):

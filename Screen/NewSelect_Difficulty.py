@@ -122,6 +122,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         print(f"Detected-2 gesture: {gesture}") # 測試有沒有抓到手勢
         if gesture == 'back':
             self.on_prev_clicked()
+            self.stop_signal.set()
         elif gesture == '1':
             self.on_difficulty_selected(self.button1)
             self.difficulty_selected.emit("簡單")
