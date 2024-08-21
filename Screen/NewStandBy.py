@@ -74,6 +74,7 @@ class Ui_NewStandBy(QtWidgets.QWidget):
 
     # 難易度
     def set_difficulty(self, difficulty):
+        print(f"Setting difficulty2: {difficulty}") 
         self.difficulty_label.setText(f"難易度: {difficulty}")
 
     # 上一步
@@ -82,7 +83,7 @@ class Ui_NewStandBy(QtWidgets.QWidget):
 
     # 手勢開始
     def start_hand_gestures_detection(self):
-        self.stop_signal.clear()  # 确保停止信号被清除
+        self.stop_signal.clear()  
         self.setupCamera()
         if self.hand_gestures_thread is None or not self.hand_gestures_thread.is_alive():
             self.hand_gestures_thread = threading.Thread(target=self.hand_gestures_detection, daemon=True)
@@ -106,7 +107,8 @@ class Ui_NewStandBy(QtWidgets.QWidget):
             self.on_prev_clicked()
             self.stop_signal.set()
         elif gesture == 'ok':
-            self.closeEvent(QtGui.QCloseEvent())
+            self.stop_signal.set()
+            self.close()
 
     # 攝影機開起
     def setupCamera(self):

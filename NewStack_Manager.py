@@ -107,7 +107,13 @@ class NewStackManager(QMainWindow):
     def on_difficulty_selected(self, difficulty):
         self.selected_difficulty = difficulty
         self.show_next_page()
+
+        # 如果当前页面是 Ui_NewStandBy
+        if isinstance(self.pages[self.current_page_index], Ui_NewStandBy):
+            self.pages[self.current_page_index].set_difficulty(difficulty)
+        
         print(f"Difficulty selected: {difficulty}")
+
 
     # 關閉攝影機
     def closeEvent(self, event):
