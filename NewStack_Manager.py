@@ -1,5 +1,8 @@
-from PyQt5 import QtWidgets, QtMultimedia
-from PyQt5.QtWidgets import QMainWindow, QWidget
+import cv2
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QMainWindow, QWidget, QLabel, QVBoxLayout
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import QTimer
 from Screen.NewSelect_Name import Ui_NewSelectName
 from Screen.NewGame_Instructions import Ui_NewGameInstructions
 from Screen.NewSelect_Difficulty import Ui_NewSelectDifficulty
@@ -15,7 +18,13 @@ class NewStackManager(QMainWindow):
         self.setGeometry(screen_geometry)
         self.setWindowTitle('MainWindow')
 
-        # 初始化頁面
+        # 攝影機
+        self.camera = cv2.VideoCapture(0)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_frame)
+        self.video_label = QLabel()  
+
+        # 遊戲頁面
         self.pages = [
             Ui_NewSelectName(),
             Ui_NewGameInstructions(),
@@ -25,16 +34,11 @@ class NewStackManager(QMainWindow):
         self.current_page_index = 0
 
         self.centralwidget = QWidget(self)
-        self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
+        self.verticalLayout = QVBoxLayout(self.centralwidget)
         self.setCentralWidget(self.centralwidget)
         self.show_page(self.current_page_index)
 
-        self.setup_connections() # 頁面連接
-
-        # 啟動相機
-        self.camera = QtMultimedia.QCamera()
-        self.camera.start()
-        print("Camera started in NewStackManager.")
+        self.setup_connections()
 
         self.start_hand_gestures_detection(self.current_page_index)
 
@@ -49,25 +53,39 @@ class NewStackManager(QMainWindow):
             if hasattr(page, 'difficulty_selected'):
                 page.difficulty_selected.connect(self.on_difficulty_selected)
 
-    # 手勢開始
+    # 開始手勢辨識判斷
     def start_hand_gestures_detection(self, index):
         page = self.pages[index]
         if hasattr(page, 'start_hand_gestures_detection'):
             page.start_hand_gestures_detection()
         print(f"Hand gestures detection started on page index: {index}")
 
-    # 手勢結束
+    # 關閉手勢辨識
     def stop_current_hand_gestures_detection(self):
         page = self.pages[self.current_page_index]
         if hasattr(page, 'stop_hand_gestures_detection'):
             page.stop_hand_gestures_detection()
         print(f"Hand gestures detection stopped on page index: {self.current_page_index}")
 
+    # 切換頁面
     def show_page(self, index):
-        # Replace current page with new page
         if self.centralwidget.layout().count() > 0:
             self.centralwidget.layout().itemAt(0).widget().setParent(None)
-        self.centralwidget.layout().addWidget(self.pages[index])
+
+        page = self.pages[index]
+        self.centralwidget.layout().addWidget(page)
+
+        if isinstance(page, Ui_NewStandBy):
+            if self.video_label.parent() is None:
+                if hasattr(page, 'verticalLayoutGroupBox'):
+                    layout = page.verticalLayoutGroupBox
+                    layout.addWidget(self.video_label)
+                else:
+                    self.centralwidget.layout().addWidget(self.video_label)
+            
+            self.start_streaming()
+        else:
+            self.stop_streaming()
 
     # 下一頁
     def show_next_page(self):
@@ -87,39 +105,53 @@ class NewStackManager(QMainWindow):
             print(f"Switched to page index: {self.current_page_index}")
             self.start_hand_gestures_detection(self.current_page_index)
         else:
-            print("Already at the first page, can't go back.")
+            print("已經是第一頁，不能返回。")
 
-    # 選擇角色的切換頁
+    # 選擇角色
     def show_next_page_with_role(self, role):
         if self.current_page_index < len(self.pages) - 1:
             self.stop_current_hand_gestures_detection()
             self.current_page_index += 1
             next_page = self.pages[self.current_page_index]
-            
+
             if isinstance(next_page, Ui_NewGameInstructions):
                 next_page.set_team_name(role)
 
             self.show_page(self.current_page_index)
-            print(f"Role selected: {role}, switched to page index: {self.current_page_index}")
+            print(f"角色選擇: {role}, 切換頁面: {self.current_page_index}")
             self.start_hand_gestures_detection(self.current_page_index)
 
-    # 選擇難易度的切換頁
+    # 選擇難易度
     def on_difficulty_selected(self, difficulty):
-        self.selected_difficulty = difficulty
+        print(f"難易度選擇: {difficulty}")
+
+        if isinstance(self.pages[3], Ui_NewStandBy):
+            self.pages[3].set_difficulty(difficulty)
         self.show_next_page()
 
-        # 如果当前页面是 Ui_NewStandBy
-        if isinstance(self.pages[self.current_page_index], Ui_NewStandBy):
-            self.pages[self.current_page_index].set_difficulty(difficulty)
-        
-        print(f"Difficulty selected: {difficulty}")
+    def start_streaming(self):
+        self.timer.start(20)  
 
+    def stop_streaming(self):
+        self.timer.stop()
+        self.video_label.clear()
 
-    # 關閉攝影機
+    def update_frame(self):
+        ret, frame = self.camera.read()
+        if ret:
+            frame = cv2.resize(frame, (1800, 1000))  # 攝影機圖框
+
+            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  
+            h, w, ch = rgb_image.shape
+            bytes_per_line = ch * w
+            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            self.video_label.setPixmap(QPixmap.fromImage(qt_image))
+            self.video_label.setFixedSize(1800, 1000)  
+
     def closeEvent(self, event):
-        if self.camera:
-            self.camera.stop()
-            print("Camera stopped in NewStackManager.")
+        self.stop_streaming()
+        self.camera.release()
+        print("Camera stopped in NewStackManager.")
         super().closeEvent(event)
 
 if __name__ == '__main__':

@@ -10,7 +10,6 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi()
-        self.camera = None
         self.hand_gestures_thread = None
         self.stop_signal = threading.Event()  # 手勢停止
 
@@ -102,13 +101,13 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
     # 手勢開始
     def start_hand_gestures_detection(self):
         self.stop_signal.clear()  # 清除資料
-        self.setupCamera()
         self.hand_gestures_thread = threading.Thread(target=self.hand_gestures_detection, daemon=True)
         self.hand_gestures_thread.start()
 
     # 手勢停止
     def stop_hand_gestures_detection(self):
         if self.hand_gestures_thread is not None:
+            self.stop_signal.set()
             self.hand_gestures_thread.join()  
 
     def hand_gestures_detection(self):
@@ -140,23 +139,8 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
             self.difficulty_selected.emit("隨機挑戰")
             self.stop_signal.set()
 
-    # 開啟攝影機
-    def setupCamera(self):
-        if self.camera is None:
-            self.camera = QtMultimedia.QCamera()
-            self.camera.start()
-            print("Camera2 started.")
-
-    # 關閉攝影機
-    def stopCamera(self):
-        if hasattr(self, 'camera') and self.camera:
-            self.camera.stop()
-            print("Camera2 stopped.")
-            self.camera = None
-
     # 關閉資訊
     def closeEvent(self, event):
-        self.stopCamera()
         self.stop_hand_gestures_detection()  
         super().closeEvent(event)
 
