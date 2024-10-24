@@ -136,18 +136,20 @@ class NewStackManager(QMainWindow):
         self.timer.stop()
         self.video_label.clear()
 
+    # 攝影機圖框
     def update_frame(self):
         ret, frame = self.camera.read()
         if ret:
-            frame = cv2.resize(frame, (1800, 1000))  # 攝影機圖框
+            frame = cv2.resize(frame, (1700,900))  # 攝影機圖框尺寸
 
             rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  
             h, w, ch = rgb_image.shape
             bytes_per_line = ch * w
             qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
             self.video_label.setPixmap(QPixmap.fromImage(qt_image))
-            self.video_label.setFixedSize(1800, 1000)  
+            self.video_label.setFixedSize(1700, 900)  
 
+    # 關閉攝影機
     def closeEvent(self, event):
         self.stop_streaming()
         self.camera.release()

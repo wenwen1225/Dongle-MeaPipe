@@ -1,7 +1,8 @@
-from PyQt5 import QtWidgets, QtGui, QtCore, QtMultimedia
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 import os
 import threading
-from KL_MP_Mix import detect_hand_gestures  
+from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewSelectDifficulty(QtWidgets.QWidget):
     difficulty_selected = QtCore.pyqtSignal(str)
@@ -9,6 +10,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.custom_font = self.load_custom_font('C:/Users/julia/AppData/Local/Microsoft/Windows/Fonts/NaikaiFont-Bold.ttf')  # 字體位置
         self.setupUi()
         self.hand_gestures_thread = None
         self.stop_signal = threading.Event()  # 手勢停止
@@ -25,9 +27,10 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         self.verticalLayout.setObjectName("verticalLayout")
         self.verticalLayout.setAlignment(QtCore.Qt.AlignTop)
 
+        # 標題
         self.label = QtWidgets.QLabel(self.centralwidget)
-        self.label.setFont(QtGui.QFont("標楷體", 48))
-        self.label.setObjectName("label")
+        font = QtGui.QFont(self.custom_font, 48)  # 使用自定義字體或標楷體
+        self.label.setFont(font)
         self.label.setAlignment(QtCore.Qt.AlignHCenter)
         self.verticalLayout.addWidget(self.label)
 
@@ -50,13 +53,36 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
         self.verticalLayout.addWidget(self.groupBox)
 
-        # 上一步 
+        # 建立一個水平佈局
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+
+        # 上一步 按鈕
         self.prevButton = QtWidgets.QPushButton(self.centralwidget)
-        self.prevButton.setFont(QtGui.QFont("標楷體", 18))
+        font = QtGui.QFont(self.custom_font, 18)  # 使用自定義字體或標楷體
+        self.prevButton.setFont(font)
         self.prevButton.setMinimumHeight(100)
         self.prevButton.setFixedWidth(400)
-        self.verticalLayout.addWidget(self.prevButton, alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft)
+        self.prevButton.setText("上一步")
         self.prevButton.clicked.connect(self.on_prev_clicked)
+
+        # 上一步的圖片
+        self.prev_img_label = QtWidgets.QLabel(self.centralwidget)
+        img_path_prev = os.path.join(os.path.dirname(__file__), 'img', 'icon5.png')  
+        self.prev_img_pixmap = QtGui.QPixmap(img_path_prev)
+        self.prev_img_label.setPixmap(self.prev_img_pixmap)
+        self.prev_img_label.setFixedSize(300, 300)  
+        self.prev_img_label.setScaledContents(True) 
+
+        # 將按鈕和圖片添加到水平佈局
+        self.horizontalLayout.addWidget(self.prevButton)
+        self.horizontalLayout.addWidget(self.prev_img_label)
+
+        # 將水平佈局添加到主佈局
+        self.verticalLayout.addLayout(self.horizontalLayout)
+
+        # 調整水平佈局的對齊方式，放在左下角
+        self.horizontalLayout.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
 
         self.setLayout(self.verticalLayout)
         self.retranslateUi()
@@ -69,7 +95,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
     # 按鈕+圖片
     def add_button_with_icon(self, text, icon_filename):
         button = QtWidgets.QPushButton(self.groupBox)
-        button.setFont(QtGui.QFont("標楷體", 30))
+        button.setFont(QtGui.QFont(self.custom_font, 30))  
         button.setMinimumHeight(200)
         button.setFixedWidth(600)
         button.setText(text)
@@ -89,14 +115,30 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         layout.addWidget(icon_label, alignment=QtCore.Qt.AlignRight)
         layout.addStretch(1)
         self.verticalLayoutGroupBox.addLayout(layout)
-
-    # 難易度
-    def on_difficulty_selected(self, difficulty):
-        self.difficulty_selected.emit(difficulty)
+        button.clicked.connect(lambda: self.difficulty_selected.emit(text))  
+        return button
 
     # 上一步
     def on_prev_clicked(self):
         self.prevButton_clicked.emit()
+
+    # 字體
+    def load_custom_font(self, font_path):
+        if not os.path.exists(font_path):
+            print(f"字體文件不存在: {font_path}")
+            return "標楷體"  # 如果字體文件不存在，返回標楷體作為後備字體
+        font_id = QtGui.QFontDatabase.addApplicationFont(font_path)
+        if font_id == -1:
+            print("字體加載失敗！")
+            return "標楷體"  # 如果加載失敗，返回標楷體
+        font_families = QtGui.QFontDatabase.applicationFontFamilies(font_id)
+        if font_families:
+            font_family = font_families[0]
+            print(f"成功加載字體-3: {font_family}")
+            return font_family  # 成功加載字體
+        else:
+            print("未找到字體名稱")
+            return "標楷體"  # 未找到字體名稱時，返回標楷體
 
     # 手勢開始
     def start_hand_gestures_detection(self):
@@ -120,24 +162,38 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
     def handle_gesture(self, gesture):
         print(f"Detected-2 gesture: {gesture}") # 測試有沒有抓到手勢
         if gesture == 'back':
+            self.highlight_button(self.prevButton)
             self.on_prev_clicked()
             self.stop_signal.set()
         elif gesture == '1':
-            self.on_difficulty_selected(self.button1)
-            self.difficulty_selected.emit("簡單")
+            self.highlight_button(self.button1)
+            self.difficulty_selected.emit(self.button1.text())
             self.stop_signal.set()
         elif gesture == '2':
-            self.on_difficulty_selected(self.button2)
-            self.difficulty_selected.emit("普通")
+            self.highlight_button(self.button2)
+            self.difficulty_selected.emit(self.button2.text())
             self.stop_signal.set()
         elif gesture == '3':
-            self.on_difficulty_selected(self.button3)
-            self.difficulty_selected.emit("困難")
+            self.highlight_button(self.button3)
+            self.difficulty_selected.emit(self.button3.text())
             self.stop_signal.set()
         elif gesture == '4':
-            self.on_difficulty_selected(self.button4)
-            self.difficulty_selected.emit("隨機挑戰")
+            self.highlight_button(self.button4)
+            self.difficulty_selected.emit(self.button4.text())
             self.stop_signal.set()
+
+    # 按鈕的紅框
+    def highlight_button(self, button):
+        self.reset_button_styles()  # 清除樣式
+        button.setStyleSheet("border: 5px solid red;")  
+
+    # 點選到其他的按鈕會切換紅框
+    def reset_button_styles(self):
+        self.prevButton.setStyleSheet("")
+        self.button1.setStyleSheet("")  
+        self.button2.setStyleSheet("")
+        self.button3.setStyleSheet("")
+        self.button4.setStyleSheet("")
 
     # 關閉資訊
     def closeEvent(self, event):
