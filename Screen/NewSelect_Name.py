@@ -11,10 +11,10 @@ class Ui_NewSelectName(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.hand_gestures_thread = None
-        self.stop_signal = threading.Event()  # 手勢停止
+        self.stop_signal = threading.Event()  
         self.timer = None
-        self.button_texts = self.load_button_texts('C:/mypython4/pack/Data/camp.txt')  # 團隊名稱txt檔
-        self.custom_font = self.load_custom_font('C:/Users/julia/AppData/Local/Microsoft/Windows/Fonts/NaikaiFont-Bold.ttf') # 字體位置
+        self.button_texts = self.load_button_texts('Data/camp.txt')  # 團隊名稱txt檔
+        self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf') # 字體位置
         self.setupUi()
 
     def setupUi(self):
@@ -25,9 +25,11 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.centralwidget = QtWidgets.QWidget(self)
         self.centralwidget.setObjectName("centralwidget")
 
+        # 使用垂直布局並讓其填滿空間
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName("verticalLayout")
         self.verticalLayout.setAlignment(QtCore.Qt.AlignTop)
+        self.verticalLayout.setContentsMargins(10, 10, 10, 10)  # 邊界
 
         # 請選擇團隊名稱 標題
         self.label = QtWidgets.QLabel(self.centralwidget)
@@ -69,7 +71,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.verticalLayoutGroupBox = QtWidgets.QVBoxLayout(self.groupBox)
         self.verticalLayoutGroupBox.setObjectName("verticalLayoutGroupBox")
 
-        spacer = QtWidgets.QSpacerItem(10, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        spacer = QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout.addItem(spacer)
 
         # 團隊按鈕，依照 camp.txt 中的文字
@@ -123,6 +125,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         button.clicked.connect(lambda: self.role_selected.emit(text))  
         return button
     
+    # 讀取txt的內容
     def load_button_texts(self, file_path):
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
@@ -157,7 +160,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         if self.hand_gestures_thread is not None:
             self.stop_signal.set()
             self.hand_gestures_thread.join() 
-        self.cancel_timer()  # 在這裡取消計時器
+        self.cancel_timer()  # 取消計時器
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
@@ -210,15 +213,13 @@ class Ui_NewSelectName(QtWidgets.QWidget):
 
     # 關閉資訊
     def closeEvent(self, event):
-        # if self.hand_gestures_thread is not None:
-        #     self.stop_signal.set()  
-        #     self.hand_gestures_thread.join()  
         self.stop_hand_gestures_detection()  # 停止手勢檢測
         event.accept()  # 確保關閉事件被接受
 
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
+    
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_NewSelectName()
     MainWindow.setCentralWidget(ui)

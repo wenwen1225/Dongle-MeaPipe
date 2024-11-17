@@ -1,6 +1,6 @@
-from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
 import os
 import threading
+from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewGameInstructions(QtWidgets.QWidget):
@@ -10,9 +10,13 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.hand_gestures_thread = None
-        self.stop_signal = threading.Event()  # 手勢停止
-        self.custom_font = self.load_custom_font('C:/Users/julia/AppData/Local/Microsoft/Windows/Fonts/NaikaiFont-Bold.ttf')  # 字體位置
-        self.setupUi()
+        self.stop_signal = threading.Event()  
+        self.timer = None  # 計時器初始化為 None
+        self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf')  # 字體位置
+        self.setupUi() 
+        self.video_path = os.path.abspath('Screen/game_video.mp4') # 影片路徑
+        self.media_player.setVolume(100)  # 確保音量設置在播放前
+        # self.media_player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(self.video_path)))
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -33,7 +37,7 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         self.verticalLayoutGroupBox = QtWidgets.QVBoxLayout(self.groupBox)
         self.verticalLayoutGroupBox.setObjectName("verticalLayoutGroupBox")
 
-        # 遊戲規則說明 標題
+        # 遊戲規則說明-標題
         self.label = QtWidgets.QLabel(self.groupBox)
         if self.custom_font:  # 如果字體顯示成功，使用該字體
             font = QtGui.QFont(self.custom_font, 48)
@@ -60,23 +64,30 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         spacerItem = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayoutGroupBox.addItem(spacerItem)
 
-        # 影片撥放組件
+        # 影片撥放
         self.video_player = QtMultimediaWidgets.QVideoWidget(self.centralwidget)
-        self.video_player.setMinimumSize(800, 600)  # 影片尺寸
+        self.video_player.setFixedSize(1280, 720)  # 影片尺寸
         self.video_player.setObjectName("video_player")
         self.verticalLayoutGroupBox.addWidget(self.video_player)  
+
+        # 使用 QSpacerItem 來調整影片的位置
+        spacerItemTop = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayoutGroupBox.addItem(spacerItemTop)  # 在影片上方添加 spacer
+        self.verticalLayoutGroupBox.addWidget(self.video_player, alignment=QtCore.Qt.AlignHCenter)  # 置中對齊
+        spacerItemBottom = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayoutGroupBox.addItem(spacerItemBottom)  # 在影片下方添加 spacer
 
         # 創建 QMediaPlayer
         self.media_player = QtMultimedia.QMediaPlayer(self)
         self.media_player.setVideoOutput(self.video_player)
 
         # 影片路徑
-        video_path = 'C:/mypython4/pack/Screen/game_video.mp4'  
+        video_path = os.path.abspath('Screen/game_video.mp4')
         if not os.path.exists(video_path):
             print(f"影片文件不存在: {video_path}")
         else:
             self.media_player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(video_path)))
-            self.media_player.play()
+            self.media_player.mediaStatusChanged.connect(self.check_media_status)
 
         # 說明
         self.label_2 = QtWidgets.QLabel(self.groupBox)
@@ -153,6 +164,13 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         self.nextButton.clicked.connect(self.on_next_clicked)
         self.prevButton.clicked.connect(self.on_prev_clicked)
 
+     # 到這個頁面才會撥放影片
+    def showEvent(self, event):
+        super().showEvent(event)
+        if os.path.exists(self.video_path):
+            self.media_player.play() 
+
+    # 說明
     def retranslateUi(self):
         _translate = QtCore.QCoreApplication.translate
         self.setWindowTitle(_translate("MainWindow", "MainWindow"))
@@ -162,15 +180,24 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         self.label_3.setText(_translate("MainWindow", "→"))
         self.label_4.setText(_translate("MainWindow", "閱讀完畢後請按下一步開始遊戲!"))
 
+    # 檢查影片的狀況
+    def check_media_status(self, status):
+        if status == QtMultimedia.QMediaPlayer.EndOfMedia:
+            self.media_player.setPosition(0)  # 從頭播放
+        elif status == QtMultimedia.QMediaPlayer.InvalidMedia:
+            print("影片播放失敗，檢查影片文件格式或路徑。")
+
     # 下一步
     def on_next_clicked(self):
         self.nextButton_clicked.emit()
-        self.media_player.pause()  # 暫停影片
+        self.media_player.setPosition(0)  # 重置播放位置
+        self.media_player.play()
 
     # 上一步
     def on_prev_clicked(self):
         self.prevButton_clicked.emit()
-        self.media_player.pause()  # 暫停影片
+        self.media_player.setPosition(0)  # 重置播放位置
+        self.media_player.play()
 
     # 上一頁的團隊名稱
     def set_team_name(self, team_name):
@@ -205,6 +232,7 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         if self.hand_gestures_thread is not None:
             self.stop_signal.set()
             self.hand_gestures_thread.join()
+        self.cancel_timer()  # 在這裡取消計時器
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
@@ -217,12 +245,24 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         print(f"Detected gesture: {gesture}")
         if gesture == 'back':
             self.highlight_button(self.prevButton)
-            self.on_prev_clicked()
+            threading.Timer(3, self.on_prev_clicked).start()
             self.stop_signal.set()
         elif gesture == 'ok':
             self.highlight_button(self.nextButton)
-            self.on_next_clicked()
+            threading.Timer(3, self.on_next_clicked).start()
             self.stop_signal.set()
+
+    # 計時器開始
+    def start_timer(self):
+        self.cancel_timer()  
+        self.timer = threading.Timer(3, self.execute_button_action)
+        self.timer.start()
+
+    # 取消計時器
+    def cancel_timer(self):
+        if self.timer is not None:
+            self.timer.cancel()
+            self.timer = None  # 重置計時器
 
     # 按鈕的紅框
     def highlight_button(self, button):

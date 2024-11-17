@@ -1,7 +1,7 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 import os
 import threading
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewSelectDifficulty(QtWidgets.QWidget):
@@ -10,10 +10,11 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.custom_font = self.load_custom_font('C:/Users/julia/AppData/Local/Microsoft/Windows/Fonts/NaikaiFont-Bold.ttf')  # 字體位置
+        self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf')  # 字體位置
         self.setupUi()
         self.hand_gestures_thread = None
-        self.stop_signal = threading.Event()  # 手勢停止
+        self.stop_signal = threading.Event()  
+        self.timer = None  
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -151,6 +152,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         if self.hand_gestures_thread is not None:
             self.stop_signal.set()
             self.hand_gestures_thread.join()  
+        self.cancel_timer()  # 在這裡取消計時器
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
@@ -163,24 +165,36 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         print(f"Detected-2 gesture: {gesture}") # 測試有沒有抓到手勢
         if gesture == 'back':
             self.highlight_button(self.prevButton)
-            self.on_prev_clicked()
+            threading.Timer(3, self.on_prev_clicked).start()
             self.stop_signal.set()
         elif gesture == '1':
             self.highlight_button(self.button1)
-            self.difficulty_selected.emit(self.button1.text())
+            threading.Timer(3, self.difficulty_selected.emit, args=(self.button1.text(),)).start()
             self.stop_signal.set()
         elif gesture == '2':
             self.highlight_button(self.button2)
-            self.difficulty_selected.emit(self.button2.text())
+            threading.Timer(3, self.difficulty_selected.emit, args=(self.button2.text(),)).start()
             self.stop_signal.set()
         elif gesture == '3':
             self.highlight_button(self.button3)
-            self.difficulty_selected.emit(self.button3.text())
+            threading.Timer(3, self.difficulty_selected.emit, args=(self.button3.text(),)).start()
             self.stop_signal.set()
         elif gesture == '4':
             self.highlight_button(self.button4)
-            self.difficulty_selected.emit(self.button4.text())
+            threading.Timer(3, self.difficulty_selected.emit, args=(self.button4.text(),)).start()
             self.stop_signal.set()
+
+    # 計時器開始
+    def start_timer(self, button_text):
+        self.cancel_timer()  
+        self.timer = threading.Timer(3, self.execute_button_action, args=(button_text,))
+        self.timer.start()
+
+    # 取消計時器
+    def cancel_timer(self):
+        if self.timer is not None:
+            self.timer.cancel()
+            self.timer = None  # 重置計時器
 
     # 按鈕的紅框
     def highlight_button(self, button):
