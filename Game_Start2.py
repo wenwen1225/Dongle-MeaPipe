@@ -35,6 +35,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
         self.animation_in_progress = True
         self.question_updated = False
         self.total_score = 0
+        self.buttons = []
 
         # 設置手勢辨識計時器
         self.gesture_timer = QTimer(self)
@@ -383,6 +384,8 @@ class Ui_Game_Start(QtWidgets.QWidget):
             if widget is not None:
                 widget.deleteLater()
 
+        self.buttons = []
+
         # 安排並樣式化選項和圖示
         for i, option in enumerate(options):
             button = QPushButton(option, self)  # 使用 QPushButton 替換 QLabel
@@ -403,6 +406,8 @@ class Ui_Game_Start(QtWidgets.QWidget):
             
             # 當按鈕被點擊時，修改字體顏色為紅色
             button.clicked.connect(lambda _, btn=button: self.check_answer(btn))  # 綁定選項文字至 check_answer
+
+            self.buttons.append(button)
 
             row, col = divmod(i, 2)  # 計算行列位置
             self.option_layout.addWidget(button, row * 2, col)  # 每行放2個選項
@@ -588,18 +593,83 @@ class Ui_Game_Start(QtWidgets.QWidget):
         timer.start(20)  # 設置滑動效果的速度
 
         # 手勢辨識功能
+    # def update_gesture(self):
+    #     if self.animation_in_progress:
+    #         print("忽略!")
+    #         return
+    #     gestures = detect_hand_gestures()  
+
+    #     # 使用 next() 來取得手勢
+    #     try:
+    #         gesture = next(gestures)
+    #         print("偵測到的手勢:", gesture)
+    #     except StopIteration:
+    #         print("沒有偵測到任何手勢")         
+    #     if gestures is None:
+    #         return  # No gesture detected
+        
+    #     # Map the gesture to a corresponding option
+    #     if gesture == 1:
+    #         self.select_option(0)
+    #         print("1",gesture)
+    #     elif gesture == 2:
+    #         self.select_option(1)
+    #         print("2",gesture)
+    #     elif gesture == 3:
+    #         self.select_option(2)
+    #         print("3",gesture)
+    #     elif gesture == 4:
+    #         self.select_option(3)
+    #         print("4",gesture)
+
     def update_gesture(self):
         if self.animation_in_progress:
-            print("Animation in progress. Key press ignored.")
+            print("動畫進行中，忽略手勢檢測")
             return
-        gestures = detect_hand_gestures()  # 假設你已經在這裡獲得生成器
-
-        # 使用 next() 來取得手勢
+        
+        gestures = detect_hand_gestures()  # 確保這裡返回的是一個生成器
         try:
             gesture = next(gestures)
-            print("偵測到的手勢:", gesture)
-        except StopIteration:
-            print("沒有偵測到任何手勢")         
+            print(f"偵測到的手勢: '{gesture}' 類型: {type(gesture)}")
+            
+            # 檢查是否為有效數字
+            if gesture.isdigit():  # 確保 gesture 是數字字符串
+                gesture = int(gesture)
+            else:
+                print("手勢值無效或為空:", gesture)
+                return
+        except (StopIteration, ValueError):
+            print("沒有偵測到任何手勢或手勢值無效")
+            return
+
+
+        # 確認 gesture 的類型和有效性
+        if gesture is None or not isinstance(gesture, int):
+            print("手勢值無效:", gesture)
+            return
+
+        # 手勢與選項對應
+        if gesture == 1:
+            self.select_option(0)
+            print("選擇選項 1")
+        elif gesture == 2:
+            self.select_option(1)
+            print("選擇選項 2")
+        elif gesture == 3:
+            self.select_option(2)
+            print("選擇選項 3")
+        elif gesture == 4:
+            self.select_option(3)
+            print("選擇選項 4")
+        else:
+            print("未匹配的手勢:", gesture)
+
+
+    def select_option(self, option_index):
+        # 根據選擇的選項索引模擬按鈕點擊
+        if 0 <= option_index < len(self.buttons):
+            button = self.buttons[option_index]  # 獲取對應的按鈕
+            self.check_answer(button)  # 觸發按鈕點擊行為
 
      # 根據手勢執行對應動作
     # def handle_gesture_action(self, gesture):
