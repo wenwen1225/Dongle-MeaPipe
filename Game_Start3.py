@@ -1,7 +1,6 @@
 import random
 import os
 import sys
-import cv2
 import threading
 import mysql.connector as db
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -35,11 +34,6 @@ class Ui_Game_Start(QtWidgets.QWidget):
         self.animation_in_progress = True
         self.question_updated = False
         self.total_score = 0
-
-        # 設置手勢辨識計時器
-        self.gesture_timer = QTimer(self)
-        self.gesture_timer.timeout.connect(self.update_gesture)
-        self.gesture_timer.start(500)  # 每 500 毫秒檢測一次手勢
 
         # 初始化時讀取難度並根據難度設定 score
         self.team_name, self.difficulty = self.read_save_file()  # 調用 read_save_file() 函數取得難度
@@ -586,24 +580,6 @@ class Ui_Game_Start(QtWidgets.QWidget):
         timer = QTimer(self)
         timer.timeout.connect(update_position)
         timer.start(20)  # 設置滑動效果的速度
-
-        # 手勢辨識功能
-    def update_gesture(self):
-        if self.animation_in_progress:
-            print("Animation in progress. Key press ignored.")
-            return
-        gestures = detect_hand_gestures()  # 假設你已經在這裡獲得生成器
-
-        # 使用 next() 來取得手勢
-        try:
-            gesture = next(gestures)
-            print("偵測到的手勢:", gesture)
-        except StopIteration:
-            print("沒有偵測到任何手勢")         
-
-     # 根據手勢執行對應動作
-    # def handle_gesture_action(self, gesture):
-    #     pass
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

@@ -1,4 +1,6 @@
 import sys
+import cv2
+import os
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QTimer
 
@@ -33,12 +35,23 @@ class GameLauncher(QtWidgets.QMainWindow):
         else:
             print("無法顯示問題：未能讀取難易度。")
 
-        # 顯示遊戲問題和選項
-        # self.game_start_window.show_question_and_options(difficulty)  # 顯示問題
-
         # 設定視窗大小
         self.resize_window()
         self.show()
+
+        # 初始化攝影機
+        self.camera = cv2.VideoCapture(0)
+        if not self.camera.isOpened():
+            print("無法開啟攝影機！")
+            sys.exit(1)
+
+        # 設定計時器，用於更新攝影機畫面
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.capture_frame)
+        self.timer.start(30)  # 每30毫秒更新一次
+
+        # 在關閉視窗時釋放攝影機資源
+        self.closeEvent = self.cleanup_camera  
 
     # 讀取 save.txt
     def read_save_file(self):
@@ -93,6 +106,28 @@ class GameLauncher(QtWidgets.QMainWindow):
         self.error3_popup.setupUi()  
         self.error3_popup.show()
         QTimer.singleShot(2000, self.error3_popup.close)  # 2秒自動關閉
+
+    def capture_frame(self):
+        ret, frame = self.camera.read()
+
+    def cleanup_camera(self, event):
+        self.camera.release()
+        print("已釋放攝影機資源")
+        event.accept()
+
+    # # 開始手勢辨識判斷
+    # def start_hand_gestures_detection(self, index):
+    #     page = self.pages[index]
+    #     if hasattr(page, 'start_hand_gestures_detection'):
+    #         page.start_hand_gestures_detection()
+    #     # print(f"Hand gestures detection started on page index: {index}")
+
+    # # 關閉手勢辨識
+    # def stop_current_hand_gestures_detection(self):
+    #     page = self.pages[self.current_page_index]
+    #     if hasattr(page, 'stop_hand_gestures_detection'):
+    #         page.stop_hand_gestures_detection()
+    #     # print(f"Hand gestures detection stopped on page index: {self.current_page_index}")
         
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
