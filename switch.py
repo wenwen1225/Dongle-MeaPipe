@@ -8,7 +8,7 @@ from Screen.Correct import Ui_Correct  # 正確
 from Screen.Error import Ui_Error  # 錯誤1
 from Screen.Pass import Ui_Pass  # 跳過
 from Screen.vid import Ui_Error2  # 錯誤2
-# from Screen.Ready import Ui_Error3  # 錯誤3
+from Screen.test import Ui_Error3  # 錯誤3
 
 class GameLauncher(QtWidgets.QMainWindow):
     def __init__(self):
@@ -66,7 +66,7 @@ class GameLauncher(QtWidgets.QMainWindow):
         self.correct_popup.show()
         QTimer.singleShot(2000, self.correct_popup.close)  # 2秒自動關閉
 
-    # 顯示答錯彈窗
+    # 顯示答錯1彈窗
     def show_error_popup(self):
         self.error_popup = Ui_Error()
         self.error_popup.setupUi()  
@@ -79,6 +79,20 @@ class GameLauncher(QtWidgets.QMainWindow):
         self.pass_popup.setupUi()  
         self.pass_popup.show()
         QTimer.singleShot(2000, self.pass_popup.close)  # 2秒自動關閉
+    
+    # 顯示答錯2彈窗
+    def show_error2_popup(self):
+        self.error2_popup = Ui_Error2()
+        self.error2_popup.setupUi()  
+        self.error2_popup.show()
+        QTimer.singleShot(2000, self.error2_popup.close)  # 2秒自動關閉
+
+    # 顯示答錯3彈窗
+    def show_error3_popup(self):
+        self.error3_popup = Ui_Error3()
+        self.error3_popup.setupUi()  
+        self.error3_popup.show()
+        QTimer.singleShot(2000, self.error3_popup.close)  # 2秒自動關閉
         
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
