@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QLabel, QVBoxLayout, QGridLayout, QWidget, QHBoxLayo
 from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
 from PyQt5.QtCore import Qt, QTimer
 
-from KL_MP_Mix import detect_hand_gestures
+# from KL_MP_Mix import detect_hand_gestures
 
 # 正確.錯誤.跳過 頁面
 from Screen.Correct import Ui_Correct  # 正確
@@ -580,6 +580,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
         timer = QTimer(self)
         timer.timeout.connect(update_position)
         timer.start(20)  # 設置滑動效果的速度
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

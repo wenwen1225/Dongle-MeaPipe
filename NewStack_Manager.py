@@ -1,6 +1,6 @@
 import cv2
 import os
-from PyQt5 import QtWidgets, QtMultimedia
+from PyQt5 import QtWidgets, QtMultimedia, QtMultimediaWidgets
 from PyQt5.QtWidgets import QMainWindow, QWidget, QLabel, QVBoxLayout
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, QUrl
@@ -19,14 +19,10 @@ class NewStackManager(QMainWindow):
         super().__init__()
 
         # 初始化背景音樂播放器
-        # self.background_music = QtMultimedia.QMediaPlayer()
-        # music_path = os.path.join(os.path.dirname(__file__), "Font", "music.mp3")
-        # self.background_music.setMedia(QtMultimedia.QMediaContent(QUrl.fromLocalFile(music_path)))
-        # self.background_music.setVolume(30)  # 設定音量，可以根據需求調整
-        # self.background_music.play()  # 播放背景音樂
-
-        # # 設定音樂循環播放
-        # self.background_music.mediaStatusChanged.connect(self.handle_media_status_change)
+        self.background_music = QtMultimedia.QMediaPlayer()
+        music_path = os.path.join(os.path.dirname(__file__), "Font", "music.mp3")
+        self.background_music.setMedia(QtMultimedia.QMediaContent(QUrl.fromLocalFile(music_path)))
+        self.background_music.setVolume(40)  # 設定音量，可以根據需求調整
 
         self.setObjectName("MainWindow")
         screen = QtWidgets.QApplication.primaryScreen()
@@ -34,7 +30,6 @@ class NewStackManager(QMainWindow):
         self.setGeometry(screen_geometry)
         self.setWindowTitle('MainWindow')
 
-        # Set light blue background for the entire window except buttons
         self.setStyleSheet("""
             QWidget {
                 background-color: #dffaff;  /* Light blue background for all widgets */
@@ -56,8 +51,7 @@ class NewStackManager(QMainWindow):
             Ui_NewGameInstructions(),
             Ui_NewSelectDifficulty(),
             Ui_NewStandBy(),
-            Ui_Ready(),
-            # Ui_Game_Start()
+            Ui_Ready()
         ]
         self.current_page_index = 0
 
@@ -70,6 +64,9 @@ class NewStackManager(QMainWindow):
         self.setup_connections()
         self.start_hand_gestures_detection(self.current_page_index)
 
+        # 等待畫面出現後再播放音樂
+        QTimer.singleShot(100, self.play_music_with_screen)
+
         # 連接Ui_Ready的播放完成信號到切換方法
         ready_page = self.pages[-1]
         if isinstance(ready_page, Ui_Ready):
@@ -77,10 +74,8 @@ class NewStackManager(QMainWindow):
 
     def on_ready_finished(self):
         # 停止並釋放頁面資源
-        # self.stop_current_hand_gestures_detection()
         self.close_all_pages()
         self.close()
-
         # 啟動switch中的GameLauncher以顯示遊戲頁面
         self.launch_game()
 
@@ -98,17 +93,11 @@ class NewStackManager(QMainWindow):
         self.game_launcher.show()
         print("已切換到Game_Start2")
 
-    # def handle_media_status_change(self, status):
-    #     if status == QtMultimedia.QMediaPlayer.EndOfMedia:
-    #         self.background_music.setPosition(0)  # 回到音樂開頭
-    #         self.background_music.play()  # 重新播放
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
         # 視窗大小
         width = self.width()
         height = self.height()
-
         # 攝影機圖框大小
         self.video_label.setFixedSize(int(width * 0.8), int(height * 0.6))  
 
@@ -141,8 +130,6 @@ class NewStackManager(QMainWindow):
                 page.difficulty_selected.connect(self.on_difficulty_selected)
             if hasattr(page, 'pushButton_clicked'):
                 page.pushButton_clicked.connect(self.show_next_page)
-            # if isinstance(page, Ui_Ready):
-            #     page.video_finished.connect(self.go_to_game_start)   
 
     # 開始手勢辨識判斷
     def start_hand_gestures_detection(self, index):
@@ -166,12 +153,13 @@ class NewStackManager(QMainWindow):
         page = self.pages[index]
         self.centralwidget.layout().addWidget(page)
 
+        # 播放背景音樂，僅當顯示的是第一頁時
+        # if index == 0:  # 第一頁
+        #     self.background_music.play()
+
         # 重新初始化攝影機圖框
         if isinstance(page, Ui_NewStandBy):
             page.restart_camera()
-        # elif isinstance(page, Ui_Game_Start):
-        #     page.showTextDrop("Font\\NaikaiFont-Bold.ttf", "Font\\game.jpg")
-        #     self.start_streaming()  # 啟動攝影機
         else:
             self.stop_streaming()  
 
@@ -230,11 +218,10 @@ class NewStackManager(QMainWindow):
             file.write(f"{difficulty}\n")
         print(f"Saved role: {role}, difficulty: {difficulty} to {file_path}")
 
-    # 遊戲頁面切換
-    # def go_to_game_start(self):
-    #     self.current_page_index = len(self.pages) - 1  
-    #     self.show_page(self.current_page_index)
-    #     print("影片播放完畢，切換到遊戲開始頁面")
+    # 音樂撥放
+    def play_music_with_screen(self):
+        if self.current_page_index == 0:  # 確保是在第一頁
+            self.background_music.play()
 
     def start_streaming(self):
         self.timer.start(20)  

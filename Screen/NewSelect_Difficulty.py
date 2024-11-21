@@ -1,7 +1,9 @@
 import os
 import threading
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtCore import QUrl, QTimer
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QWidget, QVBoxLayout
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewSelectDifficulty(QtWidgets.QWidget):
@@ -15,6 +17,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         self.hand_gestures_thread = None
         self.stop_signal = threading.Event()  
         self.timer = None  
+        self.audio_player = QtMultimedia.QMediaPlayer(self)  # 初始化媒體播放器
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -87,6 +90,32 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
         self.setLayout(self.verticalLayout)
         self.retranslateUi()
+
+    # 設定聲音播放計畫
+    def schedule_sound_playback(self):
+        QTimer.singleShot(2000, self.play_sound)  # 1 秒後執行 play_sound
+
+    # 播放聲音的方法
+    def play_sound(self):
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Select_Difficulty_sound.mp3')  # MP3 文件路徑
+        if not os.path.exists(mp3_path):
+            print(f"MP3 檔案不存在: {mp3_path}")
+            return
+        
+        url = QUrl.fromLocalFile(mp3_path)
+        content = QMediaContent(url)
+        self.audio_player.setMedia(content)
+        self.audio_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.audio_player.play()
+
+     # 到這個頁面才會撥放影片
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.play_sound()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.audio_player.stop()
 
     def retranslateUi(self):
         _translate = QtCore.QCoreApplication.translate

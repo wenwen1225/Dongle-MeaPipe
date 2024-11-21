@@ -2,7 +2,9 @@ import os
 import random
 import threading
 from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtMultimediaWidgets import QVideoWidget
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewSelectName(QtWidgets.QWidget):
@@ -15,7 +17,9 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.timer = None
         self.button_texts = self.load_button_texts('Data/camp.txt')  # 團隊名稱txt檔
         self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf') # 字體位置
+        self.media_player = QMediaPlayer()  # 初始化媒體播放器
         self.setupUi()
+        self.schedule_sound_playback()  # 計畫聲音播放
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -91,6 +95,23 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.setLayout(self.verticalLayout)
 
         self.retranslateUi()
+
+    # 設定聲音播放計畫
+    def schedule_sound_playback(self):
+        QTimer.singleShot(2000, self.play_sound)  # 2 秒後執行 play_sound
+
+    # 播放聲音的方法
+    def play_sound(self):
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Select_Name_sound.mp3')  # MP3 文件路徑
+        if not os.path.exists(mp3_path):
+            print(f"MP3 檔案不存在: {mp3_path}")
+            return
+        
+        url = QUrl.fromLocalFile(mp3_path)
+        content = QMediaContent(url)
+        self.media_player.setMedia(content)
+        self.media_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.media_player.play()
 
     # 標題
     def retranslateUi(self):

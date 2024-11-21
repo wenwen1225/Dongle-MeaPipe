@@ -7,8 +7,8 @@ from PyQt5.QtCore import QTimer
 # 遊戲頁面
 from Game_Start2 import Ui_Game_Start  # 遊戲畫面
 from Screen.Correct import Ui_Correct  # 正確
-from Screen.Error import Ui_Error  # 錯誤1
 from Screen.Pass import Ui_Pass  # 跳過
+from Screen.Error import Ui_Error  # 錯誤1
 from Screen.vid import Ui_Error2  # 錯誤2
 from Screen.test import Ui_Error3  # 錯誤3
 
@@ -25,7 +25,7 @@ class GameLauncher(QtWidgets.QMainWindow):
         # 設定為中心窗口小部件
         self.setCentralWidget(self.game_start_window)
 
-         # 讀取 save.txt 的內容來取得難易度
+        # 讀取 save.txt 的內容來取得難易度
         team_name, difficulty = self.read_save_file()  # 使用讀取檔案方法取得隊名和難易度
 
         # 檢查是否成功取得 difficulty
@@ -77,35 +77,35 @@ class GameLauncher(QtWidgets.QMainWindow):
         self.correct_popup = Ui_Correct()
         self.correct_popup.setupUi()
         self.correct_popup.show()
-        QTimer.singleShot(2000, self.correct_popup.close)  # 2秒自動關閉
+        QTimer.singleShot(1000, self.correct_popup.close)  # 2秒自動關閉
 
     # 顯示答錯1彈窗
     def show_error_popup(self):
         self.error_popup = Ui_Error()
         self.error_popup.setupUi()  
         self.error_popup.show()
-        QTimer.singleShot(2000, self.error_popup.close)  # 2秒自動關閉
+        QTimer.singleShot(1000, self.error_popup.close)  # 2秒自動關閉
 
     # 顯示跳過談窗
     def show_pass_popup(self):
         self.pass_popup = Ui_Pass()
         self.pass_popup.setupUi()  
         self.pass_popup.show()
-        QTimer.singleShot(2000, self.pass_popup.close)  # 2秒自動關閉
+        QTimer.singleShot(1000, self.pass_popup.close)  # 2秒自動關閉
     
     # 顯示答錯2彈窗
     def show_error2_popup(self):
         self.error2_popup = Ui_Error2()
         self.error2_popup.setupUi()  
         self.error2_popup.show()
-        QTimer.singleShot(2000, self.error2_popup.close)  # 2秒自動關閉
+        QTimer.singleShot(1000, self.error2_popup.close)  # 2秒自動關閉
 
     # 顯示答錯3彈窗
     def show_error3_popup(self):
         self.error3_popup = Ui_Error3()
         self.error3_popup.setupUi()  
         self.error3_popup.show()
-        QTimer.singleShot(2000, self.error3_popup.close)  # 2秒自動關閉
+        QTimer.singleShot(1000, self.error3_popup.close)  # 2秒自動關閉
 
     def capture_frame(self):
         ret, frame = self.camera.read()
@@ -114,20 +114,6 @@ class GameLauncher(QtWidgets.QMainWindow):
         self.camera.release()
         print("已釋放攝影機資源")
         event.accept()
-
-    # # 開始手勢辨識判斷
-    # def start_hand_gestures_detection(self, index):
-    #     page = self.pages[index]
-    #     if hasattr(page, 'start_hand_gestures_detection'):
-    #         page.start_hand_gestures_detection()
-    #     # print(f"Hand gestures detection started on page index: {index}")
-
-    # # 關閉手勢辨識
-    # def stop_current_hand_gestures_detection(self):
-    #     page = self.pages[self.current_page_index]
-    #     if hasattr(page, 'stop_hand_gestures_detection'):
-    #         page.stop_hand_gestures_detection()
-    #     # print(f"Hand gestures detection stopped on page index: {self.current_page_index}")
         
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

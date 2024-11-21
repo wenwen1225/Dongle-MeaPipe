@@ -1,7 +1,9 @@
 import threading
 import os
-from PyQt5 import QtWidgets, QtGui, QtCore, QtMultimediaWidgets
-from PyQt5.QtMultimedia import QCamera, QCameraInfo
+from PyQt5 import QtWidgets, QtGui, QtCore, QtMultimediaWidgets, QtMultimedia
+from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.QtMultimedia import QCamera, QCameraInfo, QMediaPlayer, QMediaContent
+from PyQt5.QtMultimediaWidgets import QVideoWidget
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewStandBy(QtWidgets.QWidget):
@@ -14,6 +16,8 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.setupUi()
         self.hand_gestures_thread = None
         self.stop_signal = threading.Event()  # 手勢停止
+        self.timer = None 
+        self.audio_player = QtMultimedia.QMediaPlayer(self)  # 初始化媒體播放器
 
         # 初始化攝影機
         self.camera = QCamera(QCameraInfo.defaultCamera())
@@ -21,8 +25,6 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.camera.setViewfinder(self.cameraViewfinder)
         self.camera.start()  # 開啟攝影機
         self.verticalLayoutGroupBox.addWidget(self.cameraViewfinder)  
-
-        self.timer = None  
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -162,6 +164,31 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         # 添加攝影機視圖到界面的 verticalLayoutGroupBox
         self.verticalLayoutGroupBox.addWidget(self.cameraViewfinder)
         self.cameraViewfinder.show()
+
+    # 設定聲音播放計畫
+    def schedule_sound_playback(self):
+        QTimer.singleShot(2000, self.play_sound)  # 2 秒後執行 play_sound
+
+    # 播放聲音的方法
+    def play_sound(self):
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'StandBy_sound.mp3')  # MP3 文件路徑
+        if not os.path.exists(mp3_path):
+            print(f"MP3 檔案不存在: {mp3_path}")
+            return
+        
+        url = QUrl.fromLocalFile(mp3_path)
+        content = QMediaContent(url)
+        self.audio_player.setMedia(content)
+        self.audio_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.audio_player.play()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.play_sound()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.audio_player.stop()
 
     # 上一頁的難易度
     def set_difficulty(self, difficulty):

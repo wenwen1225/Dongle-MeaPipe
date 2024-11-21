@@ -1,6 +1,10 @@
 import os
 import threading
 from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtMultimediaWidgets import QVideoWidget
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtCore import QUrl, QTimer
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewGameInstructions(QtWidgets.QWidget):
@@ -14,9 +18,15 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         self.timer = None  # 計時器初始化為 None
         self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf')  # 字體位置
         self.setupUi() 
+
+        # 影片及聲音
         self.video_path = os.path.abspath('Screen/game_video.mp4') # 影片路徑
-        self.media_player.setVolume(100)  # 確保音量設置在播放前
-        # self.media_player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(self.video_path)))
+        self.media_player = QtMultimedia.QMediaPlayer(self)
+        self.media_player.setVideoOutput(self.video_player)
+        self.media_player.setVolume(100)  # 設定影片音量為最大
+        self.media_player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(self.video_path)))
+
+        self.audio_player = QtMultimedia.QMediaPlayer(self)  # 初始化媒體播放器
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -163,12 +173,36 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
 
         self.nextButton.clicked.connect(self.on_next_clicked)
         self.prevButton.clicked.connect(self.on_prev_clicked)
+    
+    # 設定聲音播放計畫
+    def schedule_sound_playback(self):
+        QTimer.singleShot(2000, self.play_sound)  # 1 秒後執行 play_sound
+
+    # 播放聲音的方法
+    def play_sound(self):
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Game_Instructions_sound.mp3')  # MP3 文件路徑
+        if not os.path.exists(mp3_path):
+            print(f"MP3 檔案不存在: {mp3_path}")
+            return
+        
+        url = QUrl.fromLocalFile(mp3_path)
+        content = QMediaContent(url)
+        self.audio_player.setMedia(content)
+        self.audio_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.audio_player.play()
 
      # 到這個頁面才會撥放影片
     def showEvent(self, event):
         super().showEvent(event)
         if os.path.exists(self.video_path):
-            self.media_player.play() 
+            self.media_player.play()  # 開始播放影片
+            self.media_player.setVolume(100)  # 開啟影片時，音量自動播放
+        self.play_sound()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.media_player.pause()  # 切換頁面時暫停影片播放及聲音
+        self.audio_player.stop()
 
     # 說明
     def retranslateUi(self):
@@ -184,6 +218,7 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
     def check_media_status(self, status):
         if status == QtMultimedia.QMediaPlayer.EndOfMedia:
             self.media_player.setPosition(0)  # 從頭播放
+            self.media_player.play()  # 確保影片播放
         elif status == QtMultimedia.QMediaPlayer.InvalidMedia:
             print("影片播放失敗，檢查影片文件格式或路徑。")
 
@@ -198,7 +233,7 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         self.prevButton_clicked.emit()
         self.media_player.setPosition(0)  # 重置播放位置
         self.media_player.play()
-
+        
     # 上一頁的團隊名稱
     def set_team_name(self, team_name):
         self.label_5.setText(f"團隊名稱: {team_name}")

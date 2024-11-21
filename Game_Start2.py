@@ -3,11 +3,13 @@ import os
 import sys
 import cv2
 import threading
+import datetime
 import mysql.connector as db
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QGridLayout, QWidget, QHBoxLayout, QPushButton
 from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 from KL_MP_Mix import detect_hand_gestures
 
@@ -36,11 +38,14 @@ class Ui_Game_Start(QtWidgets.QWidget):
         self.question_updated = False
         self.total_score = 0
         self.buttons = []
+        self.setupUi()
+
+    def setupUi(self): 
 
         # 設置手勢辨識計時器
         self.gesture_timer = QTimer(self)
         self.gesture_timer.timeout.connect(self.update_gesture)
-        self.gesture_timer.start(500)  # 每 500 毫秒檢測一次手勢
+        self.gesture_timer.start(100)  # 每 100 毫秒檢測一次手勢
 
         # 初始化時讀取難度並根據難度設定 score
         self.team_name, self.difficulty = self.read_save_file()  # 調用 read_save_file() 函數取得難度
@@ -137,16 +142,21 @@ class Ui_Game_Start(QtWidgets.QWidget):
             cursor = connection.cursor()
 
             # 根據難易度選擇分數
-            if self.difficulty =="隨機挑戰":
+            if self.difficulty == "隨機挑戰":
                 random_score = random.choice([2, 4, 6])
-                cursor.execute("SELECT 題目, 錯字, 錯字位置 FROM topic WHERE 分數 = %s;", (random_score,))
+                cursor.execute("SELECT 題目編號, 題目, 錯字, 錯字位置 FROM topic WHERE 分數 = %s;", (random_score,))
             else:
-                cursor.execute("SELECT 題目, 錯字, 錯字位置 FROM topic WHERE 分數 = %s;", (self.score,))
-            
+                cursor.execute("SELECT 題目編號, 題目, 錯字, 錯字位置 FROM topic WHERE 分數 = %s;", (self.score,))
+
             rows = cursor.fetchall()
             if rows:
-                topic, typo, typo_position= random.choice(rows)
+                topic_id, topic, typo, typo_position = random.choice(rows)
                 typo = typo[:5] if len(typo) > 5 else typo
+                
+                # 打印題目編號
+                print(f"題目編號: {topic_id}")
+                self.current_question_id = topic_id
+                
                 return topic or "", typo, typo_position or ""
             return "", "", ""
         except db.Error as e:
@@ -202,6 +212,14 @@ class Ui_Game_Start(QtWidgets.QWidget):
 
     # 關閉所有視窗
     def close_all_windows(self):
+        print("關閉所有視窗")
+        self.stop_gesture_detection()
+        # 逐一關閉所有視窗
+        for widget in QtWidgets.QApplication.instance().allWidgets():
+            if isinstance(widget, QtWidgets.QWidget):  # 確保是視窗類型
+                widget.close()
+
+        # 確保退出應用程式
         QtWidgets.QApplication.instance().quit()
 
     # 鍵盤事件
@@ -212,6 +230,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
 
         # 處理不同按鍵
         if event.key() == Qt.Key_Space:  # 空白鍵跳題
+            print("Space")
             if self.pass_count < self.max_space_count:
                 self.pass_count += 1
                 self.question_number += 1  # 題號增加
@@ -221,10 +240,12 @@ class Ui_Game_Start(QtWidgets.QWidget):
             else:
                 self.close_all_windows()  # 超過次數，結束遊戲
         elif event.key() == Qt.Key_Escape:  # Esc 顯示下一題
+            print("ESC")
             self.question_number += 1
             self.clear_page()
             self.show_next_question()
         elif event.key() == Qt.Key_Q:  # Q 結束遊戲
+            print("Q")
             self.close_all_windows()
 
     # 更新題號
@@ -315,10 +336,13 @@ class Ui_Game_Start(QtWidgets.QWidget):
             # 將替換字插入到題目中
             topic_with_typo = list(topic)
             try:
+                topic_with_typo = list(topic)
                 topic_with_typo[int(typo_position)] = replacement_char
             except (IndexError, ValueError):
                 print("跳過無效替換...")
                 continue
+
+            self.current_topic = topic
 
             # 顯示題目與選項
             highlighted_text = ''.join(topic_with_typo)
@@ -436,24 +460,31 @@ class Ui_Game_Start(QtWidgets.QWidget):
             icon_label.setGeometry(x, y, 100, 100)
             self.option_layout.addWidget(icon_label)
 
-    # 按鈕字持紅色字體
     def check_answer(self, selected_option):
+        selected_text = selected_option.text()  # 提前保存文本
         selected_option.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
                 color: red;
             }
         """)
+        QTimer.singleShot(100, lambda: self.compare_answer(selected_text))  # 傳遞文本
 
-        QTimer.singleShot(500, lambda: self.compare_answer(selected_option))
+    # 比較答案，更新資料庫記錄
+    def compare_answer(self, selected_text):
+        is_correct = selected_text == self.correct_answer
+        question_id = self.current_question_id  # 從 display_random_topic 方法獲得
+        team_name = self.team_name  # 從 `read_save_file` 中已獲取
+        topic = self.current_topic  # 保存目前顯示的題目
 
-    # 比對選擇的答案是否為正確答案
-    def compare_answer(self, selected_option):
-        if selected_option.text() == self.correct_answer:
+        # 將答題記錄寫入資料庫
+        self.insert_answer_record(question_id, team_name, topic, is_correct)
+
+        # 後續答題邏輯
+        if is_correct:
             print("答對了!")
-             # 防禦性檢查，確保 self.score 是數字
             if self.score is not None and isinstance(self.score, (int, float)):
-                self.total_score += self.score  # 加上當前題目的分數
+                self.total_score += self.score
             else:
                 print("警告：分數未定義或類型不正確，無法加分")
             print(f"分數: {self.total_score}")
@@ -461,22 +492,76 @@ class Ui_Game_Start(QtWidgets.QWidget):
         else:
             self.error_count += 1
             print(f"答錯了! 錯誤次數: {self.error_count}")
-
-            # 根據錯誤次數顯示對應的彈窗
             if self.error_count == 1:
                 self.parent().show_error_popup()
-                print(f"分數: {self.total_score}")
             elif self.error_count == 2:
                 self.parent().show_error2_popup()
-                print(f"分數: {self.total_score}")
             elif self.error_count == 3:
                 self.parent().show_error3_popup()
-                print("遊戲結束，3次答錯後關閉遊戲")
-                QTimer.singleShot(3000, self.close_all_windows)  # 延遲 3 秒後關閉遊戲
-                return  # 結束處理，避免進一步執行
+                QTimer.singleShot(2000, self.close_all_windows)
+                return
 
-        QTimer.singleShot(2200, self.show_next_question)  # 延遲 2 秒後跳至下一題
+        QTimer.singleShot(2000, self.show_next_question)
         self.update_question_number()
+
+
+    # 插入答題記錄到資料庫
+    def insert_answer_record(self, question_id, team_name, topic, is_correct):
+        try:
+            config = self.get_config()
+            connection = db.connect(
+                host=config['host'],
+                user=config['user'],
+                password=config.get('password', ''),
+                database=config['database']
+            )
+            cursor = connection.cursor()
+
+            # 準備插入資料
+            query = """
+                INSERT INTO person (題目編號, 日期, 營隊名稱, 題目, 答案)
+                VALUES (%s, %s, %s, %s, %s);
+            """
+            current_time = datetime.datetime.now()
+            answer = 0 if is_correct else 1  # 答對為 0，答錯為 1
+            data = (question_id, current_time, team_name, topic, answer)
+
+            cursor.execute(query, data)
+            connection.commit()
+            print("答題記錄已成功存入資料庫")
+        except db.Error as e:
+            print("資料庫錯誤:", e)
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'connection' in locals():
+                connection.close()
+
+    # def play_sound(self, sound_path):
+    #     if not hasattr(self, 'audio_player'):
+    #         self.audio_player = QMediaPlayer(self)  # 初始化播放器
+    #         # 監聽狀態變更事件
+    #         self.audio_player.stateChanged.connect(self.handle_audio_state_changed)
+
+    #     if not os.path.exists(sound_path):
+    #         print(f"音效檔案不存在: {sound_path}")
+    #         return
+
+    #     url = QUrl.fromLocalFile(sound_path)
+    #     self.audio_player.setMedia(QMediaContent(url))
+    #     self.audio_player.setVolume(70)  # 設定音量，範圍 0-100
+    #     print(f"正在撥放音效: {sound_path}")
+    #     self.audio_player.play()
+
+    # def handle_audio_state_changed(self, state):
+    #     if state == QMediaPlayer.PlayingState:
+    #         print("音效正在撥放中...")
+    #     elif state == QMediaPlayer.StoppedState:
+    #         print("音效已完成播放")
+    #     elif state == QMediaPlayer.PausedState:
+    #         print("音效已暫停")
+    #     else:
+    #         print(f"音效狀態變更: {state}")
 
     # 顯示下一題
     def show_next_question(self):
@@ -541,7 +626,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
         timer.timeout.connect(update_text)
         timer.start(self.delay)
 
-    # 文字特效3 - 淡入
+    # 文字特效2 - 淡入
     def make_text_fade_in_effect(self, text1, text2, on_finished):
         self.text_label.clear()
         full_text, current_opacity = f"{text1}", 0.0
@@ -561,7 +646,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
         timer.timeout.connect(update_opacity)
         timer.start(self.delay)  # 根據延遲時間設置淡入速度
 
-    # 文字特效4 - 滑入
+    # 文字特效3 - 滑入
     def make_text_slide_in_effect(self, text1, text2, on_finished):
         # 先設置文字，確保可以測量其大小
         self.text_label.setText(text1)
@@ -592,36 +677,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
         timer.timeout.connect(update_position)
         timer.start(20)  # 設置滑動效果的速度
 
-        # 手勢辨識功能
-    # def update_gesture(self):
-    #     if self.animation_in_progress:
-    #         print("忽略!")
-    #         return
-    #     gestures = detect_hand_gestures()  
-
-    #     # 使用 next() 來取得手勢
-    #     try:
-    #         gesture = next(gestures)
-    #         print("偵測到的手勢:", gesture)
-    #     except StopIteration:
-    #         print("沒有偵測到任何手勢")         
-    #     if gestures is None:
-    #         return  # No gesture detected
-        
-    #     # Map the gesture to a corresponding option
-    #     if gesture == 1:
-    #         self.select_option(0)
-    #         print("1",gesture)
-    #     elif gesture == 2:
-    #         self.select_option(1)
-    #         print("2",gesture)
-    #     elif gesture == 3:
-    #         self.select_option(2)
-    #         print("3",gesture)
-    #     elif gesture == 4:
-    #         self.select_option(3)
-    #         print("4",gesture)
-
+    # 手勢辨識功能
     def update_gesture(self):
         if self.animation_in_progress:
             print("動畫進行中，忽略手勢檢測")
@@ -642,14 +698,23 @@ class Ui_Game_Start(QtWidgets.QWidget):
             print("沒有偵測到任何手勢或手勢值無效")
             return
 
-
         # 確認 gesture 的類型和有效性
         if gesture is None or not isinstance(gesture, int):
             print("手勢值無效:", gesture)
             return
-
-        # 手勢與選項對應
-        if gesture == 1:
+        
+        # 手勢與動作對應
+        if gesture == 8:
+            print("偵測到手勢 8，模擬空白鍵行為")
+            if self.pass_count < self.max_space_count:
+                self.pass_count += 1
+                self.question_number += 1  # 題號增加
+                self.clear_page()
+                self.show_next_question()
+                self.parent().show_pass_popup()
+            else:
+                self.close_all_windows()  # 超過次數，結束遊戲
+        elif gesture == 1:
             self.select_option(0)
             print("選擇選項 1")
         elif gesture == 2:
@@ -664,20 +729,26 @@ class Ui_Game_Start(QtWidgets.QWidget):
         else:
             print("未匹配的手勢:", gesture)
 
-
+    # 手勢選擇的選項
     def select_option(self, option_index):
-        # 根據選擇的選項索引模擬按鈕點擊
         if 0 <= option_index < len(self.buttons):
-            button = self.buttons[option_index]  # 獲取對應的按鈕
-            self.check_answer(button)  # 觸發按鈕點擊行為
+            button = self.buttons[option_index]  
+            self.check_answer(button) 
 
-     # 根據手勢執行對應動作
-    # def handle_gesture_action(self, gesture):
-    #     pass
+    # 停止手勢辨識功能
+    def stop_gesture_detection(self):
+        print("停止手勢辨識功能")
+        # 釋放攝影機或其他資源
+        if hasattr(self, 'gesture_thread') and self.gesture_thread.isRunning():
+            self.gesture_thread.quit()
+            self.gesture_thread.wait()
+        # 如果手勢辨識有其他資源釋放邏輯，也可以加在這裡
+        if hasattr(self, 'camera'):
+            self.camera.release()  # 停止攝影機
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     game_start = Ui_Game_Start()
     game_start.show()
-    game_start.show_question_and_options()  # 顯示題目和選項
+    # game_start.show_question_and_options()  # 顯示題目和選項
     sys.exit(app.exec_())
