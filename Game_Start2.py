@@ -31,11 +31,12 @@ class Ui_Game_Start(QtWidgets.QWidget):
     error_count = 0  # 錯誤次數 
 
     def __init__(self, parent=None):
-        super().__init__(parent)  # 將父物件傳入
-        self.setParent(parent)  # 設置父物件
+        super().__init__(parent)  
+        self.setParent(parent) 
         self.animation_finished = False
         self.animation_in_progress = True
         self.question_updated = False
+        self.gesture_enabled = True
         self.total_score = 0
         self.buttons = []
         self.setupUi()
@@ -45,10 +46,10 @@ class Ui_Game_Start(QtWidgets.QWidget):
         # 設置手勢辨識計時器
         self.gesture_timer = QTimer(self)
         self.gesture_timer.timeout.connect(self.update_gesture)
-        self.gesture_timer.start(100)  # 每 100 毫秒檢測一次手勢
+        self.gesture_timer.start(50)  # 每 50 毫秒檢測一次手勢
 
         # 初始化時讀取難度並根據難度設定 score
-        self.team_name, self.difficulty = self.read_save_file()  # 調用 read_save_file() 函數取得難度
+        self.team_name, self.difficulty = self.read_save_file() 
         self.score = self.get_score_for_difficulty(self.difficulty)
 
         # 設置主佈局
@@ -171,13 +172,13 @@ class Ui_Game_Start(QtWidgets.QWidget):
     # 讀取 save.txt
     def read_save_file(self):
         try:
-            with open("Data/save.txt", "r", encoding="big5") as file:  # 修改編碼為 big5 或 gbk
+            with open("Data/save.txt", "r", encoding="big5") as file:  
                 lines = file.readlines()
                 global team_name
                 global difficulty
                 self.team_name = lines[0].strip()
                 self.difficulty = lines[1].strip()
-                print(f"隊名: {self.team_name}, 難易度: {self.difficulty}")  # 打印隊名和難易度
+                print(f"隊名: {self.team_name}, 難易度: {self.difficulty}")  
                 return self.team_name, self.difficulty
         except FileNotFoundError:
             print("save.txt not found.")
@@ -199,7 +200,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
             return 6
         else:
             print(f"未知難易度: {difficulty}")
-            return None # 當難易度無效時返回 None
+            return None 
 
     # 倒數時間判斷
     def update_timer(self):
@@ -212,14 +213,13 @@ class Ui_Game_Start(QtWidgets.QWidget):
 
     # 關閉所有視窗
     def close_all_windows(self):
+        self.write_score_to_file()
         print("關閉所有視窗")
         self.stop_gesture_detection()
-        # 逐一關閉所有視窗
         for widget in QtWidgets.QApplication.instance().allWidgets():
-            if isinstance(widget, QtWidgets.QWidget):  # 確保是視窗類型
+            if isinstance(widget, QtWidgets.QWidget): 
                 widget.close()
 
-        # 確保退出應用程式
         QtWidgets.QApplication.instance().quit()
 
     # 鍵盤事件
@@ -233,12 +233,12 @@ class Ui_Game_Start(QtWidgets.QWidget):
             print("Space")
             if self.pass_count < self.max_space_count:
                 self.pass_count += 1
-                self.question_number += 1  # 題號增加
+                self.question_number += 1 
                 self.clear_page()
                 self.show_next_question()
                 self.parent().show_pass_popup()
             else:
-                self.close_all_windows()  # 超過次數，結束遊戲
+                self.close_all_windows()  
         elif event.key() == Qt.Key_Escape:  # Esc 顯示下一題
             print("ESC")
             self.question_number += 1
@@ -504,7 +504,6 @@ class Ui_Game_Start(QtWidgets.QWidget):
         QTimer.singleShot(2000, self.show_next_question)
         self.update_question_number()
 
-
     # 插入答題記錄到資料庫
     def insert_answer_record(self, question_id, team_name, topic, is_correct):
         try:
@@ -536,6 +535,24 @@ class Ui_Game_Start(QtWidgets.QWidget):
                 cursor.close()
             if 'connection' in locals():
                 connection.close()
+
+    # 新增方法：將團隊名稱及總分寫入 score.txt（追加模式）
+    def write_score_to_file(self):
+        try:
+            # 定義檔案路徑
+            file_path = os.path.join(os.getcwd(), "Data/score.txt")
+            print(f"正在寫入 score.txt，檔案路徑: {file_path}")  # 打印檔案路徑
+
+            # 確認要寫入的內容
+            print(f"團隊名稱: {self.team_name}, 總分: {self.total_score}")
+
+            # 檔案寫入（追加模式）
+            with open(file_path, "a", encoding="utf-8") as file:
+                file.write(f"{self.team_name},{self.total_score}\n")
+
+            print("團隊名稱及總分已成功追加至 score.txt")
+        except Exception as e:
+            print(f"寫入 score.txt 時發生錯誤: {e}")
 
     # def play_sound(self, sound_path):
     #     if not hasattr(self, 'audio_player'):
@@ -571,6 +588,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
         self.animation_finished = True
         self.animation_in_progress = True
         self.question_updated = False
+        self.gesture_enabled = True
         
     def on_animation_finished(self):
         self.animation_finished = False  # 動畫結束
@@ -599,7 +617,6 @@ class Ui_Game_Start(QtWidgets.QWidget):
         }
         print(effect_name[selected_effect])
 
-        # 執行選中的特效，並在動畫完成後更新 `self.animation_finished`
         selected_effect(text1, typo, lambda: self.on_effect_finished(options))
 
     def on_effect_finished(self, options):
@@ -679,6 +696,10 @@ class Ui_Game_Start(QtWidgets.QWidget):
 
     # 手勢辨識功能
     def update_gesture(self):
+        if not self.gesture_enabled:  # If gestures are disabled, ignore the detection
+            print("手勢辨識已禁用，等待下一題")
+            return
+        
         if self.animation_in_progress:
             print("動畫進行中，忽略手勢檢測")
             return
@@ -709,6 +730,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
             if self.pass_count < self.max_space_count:
                 self.pass_count += 1
                 self.question_number += 1  # 題號增加
+                self.gesture_enabled = False
                 self.clear_page()
                 self.show_next_question()
                 self.parent().show_pass_popup()
@@ -716,15 +738,19 @@ class Ui_Game_Start(QtWidgets.QWidget):
                 self.close_all_windows()  # 超過次數，結束遊戲
         elif gesture == 1:
             self.select_option(0)
+            self.gesture_enabled = False
             print("選擇選項 1")
         elif gesture == 2:
             self.select_option(1)
+            self.gesture_enabled = False
             print("選擇選項 2")
         elif gesture == 3:
             self.select_option(2)
+            self.gesture_enabled = False
             print("選擇選項 3")
         elif gesture == 4:
             self.select_option(3)
+            self.gesture_enabled = False
             print("選擇選項 4")
         else:
             print("未匹配的手勢:", gesture)
@@ -742,7 +768,6 @@ class Ui_Game_Start(QtWidgets.QWidget):
         if hasattr(self, 'gesture_thread') and self.gesture_thread.isRunning():
             self.gesture_thread.quit()
             self.gesture_thread.wait()
-        # 如果手勢辨識有其他資源釋放邏輯，也可以加在這裡
         if hasattr(self, 'camera'):
             self.camera.release()  # 停止攝影機
 
@@ -750,5 +775,4 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     game_start = Ui_Game_Start()
     game_start.show()
-    # game_start.show_question_and_options()  # 顯示題目和選項
     sys.exit(app.exec_())

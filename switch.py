@@ -48,7 +48,7 @@ class GameLauncher(QtWidgets.QMainWindow):
         # 設定計時器，用於更新攝影機畫面
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.capture_frame)
-        self.timer.start(30)  # 每30毫秒更新一次
+        self.timer.start(200)  # 每30毫秒更新一次
 
         # 在關閉視窗時釋放攝影機資源
         self.closeEvent = self.cleanup_camera  
