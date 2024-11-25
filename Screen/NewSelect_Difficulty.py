@@ -1,9 +1,8 @@
 import os
 import threading
-from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
+from PyQt5.QtMultimedia import QMediaContent
 from PyQt5.QtCore import QUrl, QTimer
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QWidget, QVBoxLayout
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewSelectDifficulty(QtWidgets.QWidget):
@@ -12,12 +11,12 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf')  # 字體位置
+        self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf')  
         self.setupUi()
         self.hand_gestures_thread = None
         self.stop_signal = threading.Event()  
         self.timer = None  
-        self.audio_player = QtMultimedia.QMediaPlayer(self)  # 初始化媒體播放器
+        self.audio_player = QtMultimedia.QMediaPlayer(self)  
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -33,7 +32,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
         # 標題
         self.label = QtWidgets.QLabel(self.centralwidget)
-        font = QtGui.QFont(self.custom_font, 48)  # 使用自定義字體或標楷體
+        font = QtGui.QFont(self.custom_font, 48)  
         self.label.setFont(font)
         self.label.setAlignment(QtCore.Qt.AlignHCenter)
         self.verticalLayout.addWidget(self.label)
@@ -63,7 +62,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
         # 上一步 按鈕
         self.prevButton = QtWidgets.QPushButton(self.centralwidget)
-        font = QtGui.QFont(self.custom_font, 18)  # 使用自定義字體或標楷體
+        font = QtGui.QFont(self.custom_font, 18)  
         self.prevButton.setFont(font)
         self.prevButton.setMinimumHeight(100)
         self.prevButton.setFixedWidth(400)
@@ -93,11 +92,11 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
     # 設定聲音播放計畫
     def schedule_sound_playback(self):
-        QTimer.singleShot(2000, self.play_sound)  # 1 秒後執行 play_sound
+        QTimer.singleShot(2000, self.play_sound)  # 2秒後執行 play_sound
 
     # 播放聲音的方法
     def play_sound(self):
-        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Select_Difficulty_sound.mp3')  # MP3 文件路徑
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Select_Difficulty_sound.mp3')  
         if not os.path.exists(mp3_path):
             print(f"MP3 檔案不存在: {mp3_path}")
             return
@@ -105,10 +104,10 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
         url = QUrl.fromLocalFile(mp3_path)
         content = QMediaContent(url)
         self.audio_player.setMedia(content)
-        self.audio_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.audio_player.setVolume(80)
         self.audio_player.play()
 
-     # 到這個頁面才會撥放影片
+    # 到這個頁面才會撥放影片
     def showEvent(self, event):
         super().showEvent(event)
         self.play_sound()
@@ -191,7 +190,7 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
 
     # 按鈕手勢對比
     def handle_gesture(self, gesture):
-        print(f"Detected-2 gesture: {gesture}") # 測試有沒有抓到手勢
+        print(f"Detected-2 gesture: {gesture}") 
         if gesture == 'back':
             self.highlight_button(self.prevButton)
             threading.Timer(3, self.on_prev_clicked).start()
@@ -223,11 +222,11 @@ class Ui_NewSelectDifficulty(QtWidgets.QWidget):
     def cancel_timer(self):
         if self.timer is not None:
             self.timer.cancel()
-            self.timer = None  # 重置計時器
+            self.timer = None 
 
     # 按鈕的紅框
     def highlight_button(self, button):
-        self.reset_button_styles()  # 清除樣式
+        self.reset_button_styles()  
         button.setStyleSheet("border: 5px solid red;")  
 
     # 點選到其他的按鈕會切換紅框

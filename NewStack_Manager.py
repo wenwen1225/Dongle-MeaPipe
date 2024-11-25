@@ -1,6 +1,6 @@
 import cv2
 import os
-from PyQt5 import QtWidgets, QtMultimedia, QtMultimediaWidgets
+from PyQt5 import QtWidgets, QtMultimedia
 from PyQt5.QtWidgets import QMainWindow, QWidget, QLabel, QVBoxLayout
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, QUrl
@@ -22,7 +22,7 @@ class NewStackManager(QMainWindow):
         self.background_music = QtMultimedia.QMediaPlayer()
         music_path = os.path.join(os.path.dirname(__file__), "Font", "music.mp3")
         self.background_music.setMedia(QtMultimedia.QMediaContent(QUrl.fromLocalFile(music_path)))
-        self.background_music.setVolume(40)  # 設定音量，可以根據需求調整
+        self.background_music.setVolume(40)  
 
         self.setObjectName("MainWindow")
         screen = QtWidgets.QApplication.primaryScreen()
@@ -30,6 +30,7 @@ class NewStackManager(QMainWindow):
         self.setGeometry(screen_geometry)
         self.setWindowTitle('MainWindow')
 
+        # 整體顏色
         self.setStyleSheet("""
             QWidget {
                 background-color: #dffaff;  /* Light blue background for all widgets */
@@ -67,20 +68,16 @@ class NewStackManager(QMainWindow):
         # 等待畫面出現後再播放音樂
         QTimer.singleShot(100, self.play_music_with_screen)
 
-        # 連接Ui_Ready的播放完成信號到切換方法
         ready_page = self.pages[-1]
         if isinstance(ready_page, Ui_Ready):
             ready_page.video_finished.connect(self.on_ready_finished)
 
     def on_ready_finished(self):
-        # 停止並釋放頁面資源
         self.close_all_pages()
         self.close()
-        # 啟動switch中的GameLauncher以顯示遊戲頁面
         self.launch_game()
 
     def close_all_pages(self):
-        # 釋放所有頁面資源
         for page in self.pages:
             if isinstance(page, QWidget):
                 page.deleteLater()
@@ -100,22 +97,6 @@ class NewStackManager(QMainWindow):
         height = self.height()
         # 攝影機圖框大小
         self.video_label.setFixedSize(int(width * 0.8), int(height * 0.6))  
-
-    def update_frame(self):
-        ret, frame = self.camera.read()
-        if ret:
-            # 視窗大小
-            width = self.video_label.width()
-            height = self.video_label.height()
-            
-            # 調整攝影機大小
-            frame = cv2.resize(frame, (width, height))
-
-            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  
-            h, w, ch = rgb_image.shape
-            bytes_per_line = ch * w
-            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-            self.video_label.setPixmap(QPixmap.fromImage(qt_image))
 
     # 按鈕的切換頁
     def setup_connections(self):
@@ -152,16 +133,14 @@ class NewStackManager(QMainWindow):
 
         page = self.pages[index]
         self.centralwidget.layout().addWidget(page)
-
-        # 播放背景音樂，僅當顯示的是第一頁時
-        # if index == 0:  # 第一頁
-        #     self.background_music.play()
-
+        
         # 重新初始化攝影機圖框
         if isinstance(page, Ui_NewStandBy):
             page.restart_camera()
+            print("開始")
         else:
             self.stop_streaming()  
+            print("結束")
 
     # 下一頁
     def show_next_page(self):
@@ -220,29 +199,64 @@ class NewStackManager(QMainWindow):
 
     # 音樂撥放
     def play_music_with_screen(self):
-        if self.current_page_index == 0:  # 確保是在第一頁
+        if self.current_page_index == 0: 
             self.background_music.play()
 
+    def update_frame(self):
+        if not self.camera.isOpened():
+            print("攝影機未啟動")
+            return
+
+        ret, frame = self.camera.read()
+        if not ret:
+            print("無法從攝影機獲取畫面")
+            return
+
+        width = self.video_label.width()
+        height = self.video_label.height()
+
+        if width == 0 or height == 0:
+            print("無效的 VideoLabel 尺寸")
+            return
+
+        frame = cv2.resize(frame, (width, height))
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        self.video_label.setPixmap(QPixmap.fromImage(qt_image))
+        print("成功更新攝影機畫面")
+
     def start_streaming(self):
-        self.timer.start(20)  
+        if not self.camera.isOpened():
+            self.camera.open(0)
+        self.timer.start(20)
 
     def stop_streaming(self):
         self.timer.stop()
         self.video_label.clear()
 
-    # 攝影機圖框
-    def update_frame(self):
-        ret, frame = self.camera.read()
-        if ret:
-            frame = cv2.resize(frame, (1700,900))  # 攝影機圖框尺寸
+    # def start_streaming(self):
+    #     self.timer.start(20)  
 
-            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  
-            h, w, ch = rgb_image.shape
-            bytes_per_line = ch * w
-            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-            self.video_label.setPixmap(QPixmap.fromImage(qt_image))
-            self.video_label.setFixedSize(1700, 900)  
-            print(f"Frame read successfully: {ret}")
+    # def stop_streaming(self):
+    #     self.timer.stop()
+    #     self.video_label.clear()
+
+    # # 攝影機圖框
+    # def update_frame(self):
+    #     ret, frame = self.camera.read()
+    #     if ret:
+    #         frame = cv2.resize(frame, (1700,900))  # 攝影機圖框尺寸
+
+    #         rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  
+    #         h, w, ch = rgb_image.shape
+    #         bytes_per_line = ch * w
+    #         qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+    #         self.video_label.setPixmap(QPixmap.fromImage(qt_image))
+    #         self.video_label.setFixedSize(1700, 900)  
+    #         print(f"Frame read successfully: {ret}")
+    #         return
 
     # 關閉攝影機
     # def closeEvent(self, event):

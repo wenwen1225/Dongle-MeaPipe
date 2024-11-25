@@ -1,48 +1,45 @@
 import random
 import os
 import sys
-import cv2
 import threading
 import datetime
 import mysql.connector as db
-from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtWidgets import QLabel, QVBoxLayout, QGridLayout, QWidget, QHBoxLayout, QPushButton
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QGridLayout, QWidget, QHBoxLayout, QPushButton, QGraphicsOpacityEffect
 from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
-from PyQt5.QtCore import Qt, QTimer, QUrl
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 
 from KL_MP_Mix import detect_hand_gestures
 
-# 正確.錯誤.跳過 頁面
-from Screen.Correct import Ui_Correct  # 正確
-from Screen.Error import Ui_Error  # 錯誤1
-from Screen.Pass import Ui_Pass  # 跳過
-from Screen.vid import Ui_Error2  # 錯誤2
-from Screen.test import Ui_Error3  # 錯誤3
-
 class Ui_Game_Start(QtWidgets.QWidget):
-    delay = 30  # 文字動畫延遲
+    delay = 50  # 文字動畫延遲
     question_number = 1  # 題號
-    countdown_seconds = 360  # 倒數初始秒數
+    countdown_seconds = 364  # 倒數初始秒數
     question_updated = False
     max_space_count = 3  # 空白鍵跳題限制次數
     pass_count = 0  # 跳過次數
     total_score = 0  # 總分
     error_count = 0  # 錯誤次數 
+    game_over_signal = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)  
+        self.is_active_page = True
+        self.stop_signal = threading.Event()
         self.setParent(parent) 
+        self.enable_text_effects = True  # 預設啟用文字特效
+        self.current_question_displayed = False  # 用來標記當前題目是否已顯示
+
         self.animation_finished = False
         self.animation_in_progress = True
         self.question_updated = False
         self.gesture_enabled = True
         self.total_score = 0
         self.buttons = []
+        self.is_first_question = True
         self.setupUi()
 
     def setupUi(self): 
-
         # 設置手勢辨識計時器
         self.gesture_timer = QTimer(self)
         self.gesture_timer.timeout.connect(self.update_gesture)
@@ -145,9 +142,21 @@ class Ui_Game_Start(QtWidgets.QWidget):
             # 根據難易度選擇分數
             if self.difficulty == "隨機挑戰":
                 random_score = random.choice([2, 4, 6])
-                cursor.execute("SELECT 題目編號, 題目, 錯字, 錯字位置 FROM topic WHERE 分數 = %s;", (random_score,))
+                cursor.execute("""
+                                SELECT 題目編號, 題目, 錯字, 錯字位置 
+                                FROM topic
+                                WHERE 分數 = %s;
+                                ORDER BY 題目編號
+                                LIMIT 1;
+                                """, (random_score,))
             else:
-                cursor.execute("SELECT 題目編號, 題目, 錯字, 錯字位置 FROM topic WHERE 分數 = %s;", (self.score,))
+                cursor.execute("""
+                                SELECT 題目編號, 題目, 錯字, 錯字位置 
+                                FROM topic 
+                                WHERE 分數 = %s;
+                                ORDER BY 題目編號
+                                LIMIT 1;
+                                """, (self.score,))
 
             rows = cursor.fetchall()
             if rows:
@@ -215,12 +224,10 @@ class Ui_Game_Start(QtWidgets.QWidget):
     def close_all_windows(self):
         self.write_score_to_file()
         print("關閉所有視窗")
-        self.stop_gesture_detection()
-        for widget in QtWidgets.QApplication.instance().allWidgets():
-            if isinstance(widget, QtWidgets.QWidget): 
-                widget.close()
-
-        QtWidgets.QApplication.instance().quit()
+        # self.stop_gesture_detection()
+        self.game_over_signal.emit()  # 發送遊戲結束信號
+        self.close()  # 關閉當前遊戲窗口
+        self.is_active_page = False
 
     # 鍵盤事件
     def keyPressEvent(self, event):
@@ -303,6 +310,7 @@ class Ui_Game_Start(QtWidgets.QWidget):
             widget = self.option_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()  # 刪除現有的選項和圖示
+        self.option_layout.update()  # 強制刷新佈局
 
         # 調整字體大小
         font = self.text_label.font()
@@ -311,9 +319,11 @@ class Ui_Game_Start(QtWidgets.QWidget):
         self.text_label.setFont(font)
 
     # 顯示成語題目
-    def show_question_and_options(self, difficulty): 
+    def show_question_and_options(self, difficulty):
+        self.clear_page()  # 確保清除舊題目和選項
+        self.option_widget.setVisible(False)  # 隱藏選項，直到題目顯示完成
+
         while True:
-            # 在隨機挑戰模式下，每次都生成新的隨機難易度分數
             if self.difficulty == "隨機挑戰":
                 self.score = random.choice([2, 4, 6])  # 設置隨機分數為 self.score
                 topic, typo, typo_position = self.display_random_topic(self.score)
@@ -321,7 +331,6 @@ class Ui_Game_Start(QtWidgets.QWidget):
             else:
                 topic, typo, typo_position = self.display_random_topic(self.score)
 
-            # 顯示題目選項
             if not topic or not typo or not typo_position:
                 print("跳過不完整的題目...")
                 continue
@@ -332,26 +341,32 @@ class Ui_Game_Start(QtWidgets.QWidget):
                 continue
 
             replacement_char, options = result
-
-            # 將替換字插入到題目中
             topic_with_typo = list(topic)
             try:
-                topic_with_typo = list(topic)
                 topic_with_typo[int(typo_position)] = replacement_char
             except (IndexError, ValueError):
                 print("跳過無效替換...")
                 continue
 
             self.current_topic = topic
-
-            # 顯示題目與選項
             highlighted_text = ''.join(topic_with_typo)
             self.text_label.setTextFormat(Qt.RichText)
-            self.show_text_with_random_effect(highlighted_text, typo, options)
 
-            # 顯示選項與圖標
-            self.display_options_and_icons(options)
+            # 顯示題目特效
+            self.animation_in_progress = True
+            self.show_text_with_random_effect(highlighted_text, typo, options)
+            
+            # 等待動畫完成後顯示選項
+            QTimer.singleShot(1000, lambda: self.display_options_and_icons(options))  # 設定動畫完成延遲
             break
+
+    def start_game(self):
+        # 清空界面，等待第一題的顯示
+        self.clear_page()
+        self.text_label.clear()  # 確保初始時無題目顯示
+        self.option_widget.setVisible(False)  # 隱藏選項
+        print("遊戲開始，等待顯示第一題...")
+        self.show_next_question()
 
     # 錯字排除，隨機選取一個錯字，排除第一個字元
     def get_random_typo(self, typo):
@@ -391,8 +406,13 @@ class Ui_Game_Start(QtWidgets.QWidget):
             typo_options = [char for char in typo_options if char != replacement_char]
             
             # 隨機選擇 3 個錯誤選項並打亂
-            unique_options.extend(random.sample(typo_options, 3))
+            if len(typo_options) >= 3:
+                unique_options.extend(random.sample(typo_options, 3))
             random.shuffle(unique_options)
+
+            if len(unique_options) != 4:
+                print(f"警告：生成的選項數量為 {len(unique_options)}，跳過此題")
+                return None
 
             return highlighted_replacement_char, unique_options
         
@@ -406,9 +426,9 @@ class Ui_Game_Start(QtWidgets.QWidget):
         for i in reversed(range(self.option_layout.count())):
             widget = self.option_layout.itemAt(i).widget()
             if widget is not None:
-                widget.deleteLater()
+                widget.deleteLater()  # 刪除按鈕
 
-        self.buttons = []
+        self.buttons = []  # 清空按鈕列表
 
         # 安排並樣式化選項和圖示
         for i, option in enumerate(options):
@@ -425,11 +445,11 @@ class Ui_Game_Start(QtWidgets.QWidget):
                 }
             """)
             
-            button.setFixedSize(200, 200)  # 設定按鈕大小
+            button.setFixedSize(250, 250)  # 設定按鈕大小
             button.setFocusPolicy(Qt.StrongFocus)
             
             # 當按鈕被點擊時，修改字體顏色為紅色
-            button.clicked.connect(lambda _, btn=button: self.check_answer(btn))  # 綁定選項文字至 check_answer
+            button.clicked.connect(lambda _, btn=button: self.check_answer(btn))  
 
             self.buttons.append(button)
 
@@ -441,12 +461,12 @@ class Ui_Game_Start(QtWidgets.QWidget):
         icons = [QPixmap(icon).scaled(150, 150, Qt.KeepAspectRatio) for icon in icon_paths if os.path.exists(icon)]
         
         # 確保圖示有4個，並將它們安排到對應位置
-        icon_positions = [(0, 0), (0, 1), (1, 0), (1, 1)]  # (行, 列) => (0,0)放圖示1，(0,1)放圖示2，依此類推
+        icon_positions = [(0, 0), (0, 1), (1, 0), (1, 1)]  
         for pixmap, (row, col) in zip(icons, icon_positions):
             icon_label = QLabel(self)
             icon_label.setPixmap(pixmap)
             icon_label.setAlignment(Qt.AlignCenter)
-            self.option_layout.addWidget(icon_label, row * 2 + 1, col)  # 圖示放在選項下面，所以下一行
+            self.option_layout.addWidget(icon_label, row * 2 + 1, col) 
 
     # 圖示擺放
     def show_icons(self):
@@ -460,15 +480,16 @@ class Ui_Game_Start(QtWidgets.QWidget):
             icon_label.setGeometry(x, y, 100, 100)
             self.option_layout.addWidget(icon_label)
 
+    # 比出答案是變成紅色
     def check_answer(self, selected_option):
-        selected_text = selected_option.text()  # 提前保存文本
+        selected_text = selected_option.text()  
         selected_option.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
                 color: red;
             }
         """)
-        QTimer.singleShot(100, lambda: self.compare_answer(selected_text))  # 傳遞文本
+        QTimer.singleShot(100, lambda: self.compare_answer(selected_text))  
 
     # 比較答案，更新資料庫記錄
     def compare_answer(self, selected_text):
@@ -536,17 +557,17 @@ class Ui_Game_Start(QtWidgets.QWidget):
             if 'connection' in locals():
                 connection.close()
 
-    # 新增方法：將團隊名稱及總分寫入 score.txt（追加模式）
+    # 新增方法：將團隊名稱及總分寫入 score.txt
     def write_score_to_file(self):
         try:
             # 定義檔案路徑
             file_path = os.path.join(os.getcwd(), "Data/score.txt")
-            print(f"正在寫入 score.txt，檔案路徑: {file_path}")  # 打印檔案路徑
+            print(f"正在寫入 score.txt，檔案路徑: {file_path}") 
 
             # 確認要寫入的內容
             print(f"團隊名稱: {self.team_name}, 總分: {self.total_score}")
 
-            # 檔案寫入（追加模式）
+            # 檔案寫入
             with open(file_path, "a", encoding="utf-8") as file:
                 file.write(f"{self.team_name},{self.total_score}\n")
 
@@ -554,47 +575,39 @@ class Ui_Game_Start(QtWidgets.QWidget):
         except Exception as e:
             print(f"寫入 score.txt 時發生錯誤: {e}")
 
-    # def play_sound(self, sound_path):
-    #     if not hasattr(self, 'audio_player'):
-    #         self.audio_player = QMediaPlayer(self)  # 初始化播放器
-    #         # 監聽狀態變更事件
-    #         self.audio_player.stateChanged.connect(self.handle_audio_state_changed)
-
-    #     if not os.path.exists(sound_path):
-    #         print(f"音效檔案不存在: {sound_path}")
-    #         return
-
-    #     url = QUrl.fromLocalFile(sound_path)
-    #     self.audio_player.setMedia(QMediaContent(url))
-    #     self.audio_player.setVolume(70)  # 設定音量，範圍 0-100
-    #     print(f"正在撥放音效: {sound_path}")
-    #     self.audio_player.play()
-
-    # def handle_audio_state_changed(self, state):
-    #     if state == QMediaPlayer.PlayingState:
-    #         print("音效正在撥放中...")
-    #     elif state == QMediaPlayer.StoppedState:
-    #         print("音效已完成播放")
-    #     elif state == QMediaPlayer.PausedState:
-    #         print("音效已暫停")
-    #     else:
-    #         print(f"音效狀態變更: {state}")
-
     # 顯示下一題
     def show_next_question(self):
         self.clear_page()
         self.show_question_and_options(self.difficulty)
         self.question_label.setText(f"第{self.question_number}題")
+
+        # 啟用文字特效，確保不直接設置文字
+        if not self.enable_text_effects:
+            print("文字特效已停用，直接顯示題目")
+            self.text_label.setText(self.current_topic)
+            self.display_options_and_icons(self.current_options)
+            return
+
+        # 初始化動畫狀態
         self.animation_finished = True
         self.animation_in_progress = True
-        self.question_updated = False
         self.gesture_enabled = True
-        
+
+    # 題目動畫完成顯示選項
     def on_animation_finished(self):
-        self.animation_finished = False  # 動畫結束
+        self.animation_in_progress = False
+        self.option_widget.setVisible(True)  # 顯示選項
 
     # 文字特效方法
     def show_text_with_random_effect(self, text1, typo, options):
+        if not self.enable_text_effects:
+            print("文字特效已停用，直接顯示題目")
+            self.text_label.setText(text1)  # 直接設置文字
+            self.animation_in_progress = False
+            self.animation_finished = True
+            self.display_options_and_icons(options)  # 顯示選項
+            return
+
         # 初始化動畫狀態
         self.animation_in_progress = True
         self.animation_finished = False
@@ -604,10 +617,16 @@ class Ui_Game_Start(QtWidgets.QWidget):
         font.setLetterSpacing(QFont.PercentageSpacing, 200)
         self.text_label.setFont(font)
 
-        # 隨機選擇特效
-        effects = [self.make_text_typewriter_effect,
-                self.make_text_fade_in_effect, self.make_text_slide_in_effect]
-        selected_effect = random.choice(effects)
+        # 判斷是否是第一次顯示
+        if self.is_first_question:
+            print("第一次顯示，使用淡入效果 (Fade-in Effect)")
+            selected_effect = self.make_text_fade_in_effect
+            self.is_first_question = False  # 將狀態設置為 False
+        else:
+            # 隨機選擇特效
+            effects = [self.make_text_typewriter_effect,
+                    self.make_text_fade_in_effect, self.make_text_slide_in_effect]
+            selected_effect = random.choice(effects)
 
         # 顯示所選特效的訊息
         effect_name = {
@@ -617,8 +636,16 @@ class Ui_Game_Start(QtWidgets.QWidget):
         }
         print(effect_name[selected_effect])
 
-        selected_effect(text1, typo, lambda: self.on_effect_finished(options))
-
+        try:
+            selected_effect(text1, typo, lambda: self.on_effect_finished(options))
+        except Exception as e:
+            print(f"文字特效失敗：{e}")
+            self.enable_text_effects = False  # 停用文字特效
+            self.text_label.setText(text1)  # 直接顯示文字
+            self.animation_in_progress = False
+            self.animation_finished = True
+            self.display_options_and_icons(options)  # 顯示選項
+ 
     def on_effect_finished(self, options):
         self.animation_in_progress = False  # 動畫結束，允許鍵盤事件
         self.animation_finished = True  # 動畫完成
@@ -627,76 +654,78 @@ class Ui_Game_Start(QtWidgets.QWidget):
 
     # 文字特效1-打字機
     def make_text_typewriter_effect(self, text1, text2, on_finished):
-        full_text, current_text, step = f"{text1}", "", 0
+        full_text = f"{text1}"  # 完整文字
+        step = 0
 
         def update_text():
-            nonlocal step, current_text
+            nonlocal step
             if step < len(full_text):
-                current_text += full_text[step]
-                self.text_label.setText(current_text)
+                # 只更新新增的部分
+                self.text_label.setText(full_text[:step + 1])
                 step += 1
+            else:
+                timer.stop()
+                on_finished()  # 完成後調用回調函數
+
+        timer = QTimer(self)
+        timer.timeout.connect(update_text)
+        timer.start(30)
+
+    # 文字特效2 - 淡入
+    def make_text_fade_in_effect(self, text1, text2, on_finished):
+        self.text_label.setText(text1)
+        effect = QGraphicsOpacityEffect(self.text_label)
+        self.text_label.setGraphicsEffect(effect)
+        opacity = 0.0
+
+        def update_opacity():
+            nonlocal opacity
+            if opacity < 1.0:
+                opacity += 0.2
+                effect.setOpacity(opacity)  # 直接設置透明度
             else:
                 timer.stop()
                 on_finished()
 
         timer = QTimer(self)
-        timer.timeout.connect(update_text)
-        timer.start(self.delay)
-
-    # 文字特效2 - 淡入
-    def make_text_fade_in_effect(self, text1, text2, on_finished):
-        self.text_label.clear()
-        full_text, current_opacity = f"{text1}", 0.0
-
-        def update_opacity():
-            nonlocal current_opacity
-            if current_opacity <= 1.0:
-                # 使用 RGBA 值調整透明度
-                self.text_label.setStyleSheet(f"color: rgba(0, 0, 0, {int(current_opacity * 255)});")
-                self.text_label.setText(full_text)
-                current_opacity += 0.1  # 逐漸增加透明度
-            else:
-                timer.stop()
-                on_finished()  # 動畫結束後調用回調函數
-
-        timer = QTimer(self)
         timer.timeout.connect(update_opacity)
-        timer.start(self.delay)  # 根據延遲時間設置淡入速度
+        timer.start(50)
 
     # 文字特效3 - 滑入
     def make_text_slide_in_effect(self, text1, text2, on_finished):
-        # 先設置文字，確保可以測量其大小
-        self.text_label.setText(text1)
-        
-        # 在設置文字後調整其大小以獲取準確的寬度
-        self.text_label.adjustSize()
-        
-        # 設置起始和結束位置
-        start_x = self.width()  # 起始位置設置在視窗右邊外部
-        end_x = (self.width() - self.text_label.width()) // 2  # 終止位置設置為中央
+        self.text_label.setText(text1)  # 設置文字
+        self.text_label.adjustSize()  # 只執行一次
+
+        # 起始和結束位置
+        start_x = self.width()
+        end_x = (self.width() - self.text_label.width()) // 2
         current_x = start_x
 
-        # 定義滑入的動畫效果
         def update_position():
             nonlocal current_x
             if current_x > end_x:
-                # 讓文字逐漸向左移動，當接近目標時步伐變小
-                move_distance = min(20, current_x - end_x)  # 控制每次移動距離
-                current_x -= move_distance
+                current_x -= 20  # 固定每次移動距離
                 self.text_label.move(current_x, self.text_label.y())
             else:
-                # 動畫完成，確保文字停留在中央位置
-                self.text_label.move(end_x, self.text_label.y())
+                self.text_label.move(end_x, self.text_label.y())  # 確保停留在正確位置
                 timer.stop()
-                on_finished()  # 動畫結束後調用回調函數
+                on_finished()
 
         timer = QTimer(self)
         timer.timeout.connect(update_position)
-        timer.start(20)  # 設置滑動效果的速度
+        timer.start(16)  # 每次更新時間間隔
+
+    # 開始手勢辨識
+    def start_gesture_detection(self):
+        self.stop_signal.clear() 
+
+        # 創建新的手勢辨識執行緒
+        self.gesture_thread = threading.Thread(target=self.update_gesture, daemon=True)
+        self.gesture_thread.start()
 
     # 手勢辨識功能
     def update_gesture(self):
-        if not self.gesture_enabled:  # If gestures are disabled, ignore the detection
+        if not self.gesture_enabled: 
             print("手勢辨識已禁用，等待下一題")
             return
         
@@ -704,28 +733,23 @@ class Ui_Game_Start(QtWidgets.QWidget):
             print("動畫進行中，忽略手勢檢測")
             return
         
+        if not self.is_active_page:  # 如果頁面未啟動，忽略手勢
+            return
+        
         gestures = detect_hand_gestures()  # 確保這裡返回的是一個生成器
         try:
             gesture = next(gestures)
             print(f"偵測到的手勢: '{gesture}' 類型: {type(gesture)}")
             
-            # 檢查是否為有效數字
-            if gesture.isdigit():  # 確保 gesture 是數字字符串
-                gesture = int(gesture)
-            else:
+            if not gesture:  # 如果手勢值為空，直接返回
                 print("手勢值無效或為空:", gesture)
                 return
         except (StopIteration, ValueError):
             print("沒有偵測到任何手勢或手勢值無效")
             return
-
-        # 確認 gesture 的類型和有效性
-        if gesture is None or not isinstance(gesture, int):
-            print("手勢值無效:", gesture)
-            return
         
         # 手勢與動作對應
-        if gesture == 8:
+        if gesture == "PASS":
             print("偵測到手勢 8，模擬空白鍵行為")
             if self.pass_count < self.max_space_count:
                 self.pass_count += 1
@@ -736,22 +760,22 @@ class Ui_Game_Start(QtWidgets.QWidget):
                 self.parent().show_pass_popup()
             else:
                 self.close_all_windows()  # 超過次數，結束遊戲
-        elif gesture == 1:
-            self.select_option(0)
+        elif gesture == "1":
             self.gesture_enabled = False
             print("選擇選項 1")
-        elif gesture == 2:
-            self.select_option(1)
+            self.select_option(0)
+        elif gesture == "2":
             self.gesture_enabled = False
             print("選擇選項 2")
-        elif gesture == 3:
-            self.select_option(2)
+            self.select_option(1)
+        elif gesture == "3":
             self.gesture_enabled = False
             print("選擇選項 3")
-        elif gesture == 4:
-            self.select_option(3)
+            self.select_option(2)
+        elif gesture == "4":
             self.gesture_enabled = False
             print("選擇選項 4")
+            self.select_option(3)
         else:
             print("未匹配的手勢:", gesture)
 

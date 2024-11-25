@@ -10,12 +10,9 @@ mp_hands = mp.solutions.hands
 PWD = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(1, os.path.join(PWD, '..'))
 
-from utils.ExampleHelper import get_device_usb_speed_by_port_id
-from utils.ExamplePostProcess import post_process_tiny_yolo_v3
-
-SCPU_FW_PATH = os.path.join(PWD, '../../res/firmware/KL520/fw_scpu.bin')
-NCPU_FW_PATH = os.path.join(PWD, '../../res/firmware/KL520/fw_ncpu.bin')
-MODEL_FILE_PATH = os.path.join(PWD, '../../res/models/KL520/tiny_yolo_v3/models_520.nef')
+SCPU_FW_PATH = os.path.join(PWD, '/res/firmware/KL520/fw_scpu.bin')
+NCPU_FW_PATH = os.path.join(PWD, '/res/firmware/KL520/fw_ncpu.bin')
+MODEL_FILE_PATH = os.path.join(PWD, '/res/models/KL520/tiny_yolo_v3/models_520.nef')
 
 
 # 根據兩點的座標，計算角度
@@ -68,8 +65,9 @@ def hand_pos(finger_angle):
     f4 = finger_angle[3]   # 無名指角度
     f5 = finger_angle[4]   # 小拇指角度
 
-    if f1 < 50 and f2 >= 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
-        return '8'
+    # <50度=伸直 >50度=彎曲
+    if f1 < 50 and f2 >= 50 and f3 >= 50 and f4 >= 50 and f5 >= 50: 
+        return 'PASS'
     elif f1 >= 50 and f2 >= 50 and f3 < 50 and f4 >= 50 and f5 >= 50:
         return 'no!!!'
     elif f1 >= 50 and f2 >= 50 and f3 >= 50 and f4 >= 50 and f5 < 50:
@@ -82,6 +80,10 @@ def hand_pos(finger_angle):
         return '3'
     elif f1 >= 50 and f2 < 50 and f3 < 50 and f4 < 50 and f5 < 50:
         return '4'
+    elif f1 <50 and f2 <50 and f3 <50 and f4 <50 and f5<50:
+        return '5'
+    elif f1 <50 and f2 >=50 and f3 >=50 and f4 >=50 and f5<50:
+        return '6'
     elif f1 >= 50 and f2 >= 50 and f3 < 50 and f4 < 50 and f5 < 50:
         return 'ok'
     elif f1 < 50 and f2 < 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
@@ -90,37 +92,71 @@ def hand_pos(finger_angle):
         return ''
 
 def detect_hand_gestures():
-    cap = cv2.VideoCapture(0)  # 讀取攝影機
+    cap = None
+    backends = [cv2.CAP_DSHOW,  cv2.CAP_FFMPEG]  # 優先選擇的後端
+    for backend in backends:
+        cap = cv2.VideoCapture(0, backend)
+        if cap.isOpened():
+            print(f"Camera opened successfully with backend: {backend}")
+            break
+        else:
+            print(f"Failed to open camera with backend: {backend}")
+
+    if not cap or not cap.isOpened():
+        print("Cannot open camera with any backend")
+        exit()
+
+    # 嘗試設定解析度
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
     with mp_hands.Hands(
         max_num_hands=1,
         model_complexity=0,
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5
     ) as hands:
+        # 檢查攝影機是否開啟
         if not cap.isOpened():
             print("Cannot open camera")
             exit()
-        w, h = 540, 310  # 影像尺寸
+        
+        w, h = 540, 310  # 設定圖像縮小的尺寸
+
         while True:
-            ret, img = cap.read()
-            img = cv2.resize(img, (w, h))  # 縮小尺寸，加快處理效率
+            ret, img = cap.read()  # 嘗試讀取攝影機幀
             if not ret:
-                print("Cannot receive frame")
-                break
+                print("Cannot receive frame")  # 如果未能成功讀取，顯示錯誤訊息
+                break  # 退出循環，停止手勢偵測
+            
+            # 確保 img 不是 None 再進行 resize
+            try:
+                img = cv2.resize(img, (w, h))  # 縮小圖像，加快處理速度
+            except cv2.error as e:
+                print(f"Error resizing image: {e}")  # 捕獲可能的 resize 錯誤
+                continue  # 跳過這一幀
+
             img2 = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # 轉換成 RGB 色彩
-            results = hands.process(img2)  # 偵測手勢
+            results = hands.process(img2)  # 使用 MediaPipe 偵測手勢
+            
+            # 偵測手勢後處理
             if results.multi_hand_landmarks:
                 for hand_landmarks in results.multi_hand_landmarks:
-                    finger_points = []  # 記錄手指節點座標的串列
+                    finger_points = []  # 記錄手指節點座標
                     for i in hand_landmarks.landmark:
                         x = i.x * w
                         y = i.y * h
                         finger_points.append((x, y))
+                    
                     if finger_points:
-                        finger_angle = hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
-                        text = hand_pos(finger_angle)  # 取得手勢所回傳的內容
-                        yield text  # 使用 yield 來返回手勢名稱
+                        finger_angle = hand_angle(finger_points)  # 計算手指角度
+                        text = hand_pos(finger_angle)  # 根據手指角度判斷手勢
+                        yield text  # 返回手勢名稱
+
+            # 按下 'q' 鍵退出
             if cv2.waitKey(5) == ord('q'):
                 break
+
+    # 確保退出時釋放攝影機資源
     cap.release()
     cv2.destroyAllWindows()

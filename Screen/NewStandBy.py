@@ -1,9 +1,10 @@
 import threading
 import os
+import cv2
 from PyQt5 import QtWidgets, QtGui, QtCore, QtMultimediaWidgets, QtMultimedia
-from PyQt5.QtCore import Qt, QTimer, QUrl
-from PyQt5.QtMultimedia import QCamera, QCameraInfo, QMediaPlayer, QMediaContent
-from PyQt5.QtMultimediaWidgets import QVideoWidget
+from PyQt5.QtCore import QTimer, QUrl
+from PyQt5.QtMultimedia import QCamera, QCameraInfo, QMediaContent
+from PyQt5.QtGui import QImage, QPixmap
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewStandBy(QtWidgets.QWidget):
@@ -15,15 +16,15 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf')  # 字体位置
         self.setupUi()
         self.hand_gestures_thread = None
-        self.stop_signal = threading.Event()  # 手勢停止
+        self.stop_signal = threading.Event()  
         self.timer = None 
-        self.audio_player = QtMultimedia.QMediaPlayer(self)  # 初始化媒體播放器
+        self.audio_player = QtMultimedia.QMediaPlayer(self) 
 
         # 初始化攝影機
         self.camera = QCamera(QCameraInfo.defaultCamera())
         self.cameraViewfinder = QtMultimediaWidgets.QCameraViewfinder(self.groupBox)
         self.camera.setViewfinder(self.cameraViewfinder)
-        self.camera.start()  # 開啟攝影機
+        self.camera.start()  
         self.verticalLayoutGroupBox.addWidget(self.cameraViewfinder)  
 
     def setupUi(self):
@@ -92,7 +93,6 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         self.pushButton.setMinimumHeight(100)
         self.pushButton.setFixedWidth(400)
         self.pushButton.setText("OK")
-        #self.pushButton.clicked.connect(self.close)  # 執行後關閉頁面
 
         # OK的圖片
         self.ok_img_label = QtWidgets.QLabel(self)
@@ -132,23 +132,37 @@ class Ui_NewStandBy(QtWidgets.QWidget):
             self.camera = QCamera(QCameraInfo.defaultCamera())
             self.camera.setViewfinder(self.cameraViewfinder)
             self.camera.start()
-            self.verticalLayoutGroupBox.addWidget(self.cameraViewfinder)  # 添加到佈局
+            self.verticalLayoutGroupBox.addWidget(self.cameraViewfinder)  # 新增到佈局
             self.cameraViewfinder.show()
 
     def init_camera(self):
-        # 刪除舊的攝影機圖框
+        # 停止並釋放舊的攝影機
+        if self.camera and self.camera.state() == QCamera.ActiveState:
+            self.camera.stop()
+            self.camera.deleteLater()
+
+        # 移除舊的攝影機視圖
         if self.cameraViewfinder:
             self.cameraViewfinder.setParent(None)
             self.cameraViewfinder.deleteLater()
 
-        # 新增新的攝影機圖框
+        # 初始化新的攝影機和視圖
         self.cameraViewfinder = QtMultimediaWidgets.QCameraViewfinder(self.groupBox)
-        self.camera = QCamera(QCameraInfo.defaultCamera())
+        self.camera = QCamera(QCameraInfo.defaultCamera(), self)
+        
+        # 打印初始化日誌，便於調試
+        if not self.camera:
+            print("初始化攝影機失敗：無法找到默認攝影機。")
+            return
+        print(f"初始化攝影機成功：{self.camera}")
+
         self.camera.setViewfinder(self.cameraViewfinder)
         self.camera.start()
-        
+
+        # 添加到佈局並顯示
         self.verticalLayoutGroupBox.addWidget(self.cameraViewfinder)
         self.cameraViewfinder.show()
+        print("攝影機初始化完成並開始運行。")
 
     def restart_camera(self):
         if self.cameraViewfinder:
@@ -171,7 +185,7 @@ class Ui_NewStandBy(QtWidgets.QWidget):
 
     # 播放聲音的方法
     def play_sound(self):
-        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'StandBy_sound.mp3')  # MP3 文件路徑
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'StandBy_sound.mp3')  
         if not os.path.exists(mp3_path):
             print(f"MP3 檔案不存在: {mp3_path}")
             return
@@ -179,12 +193,14 @@ class Ui_NewStandBy(QtWidgets.QWidget):
         url = QUrl.fromLocalFile(mp3_path)
         content = QMediaContent(url)
         self.audio_player.setMedia(content)
-        self.audio_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.audio_player.setVolume(80)  
         self.audio_player.play()
-
+    
+    # 到這個頁面才會撥放影片
     def showEvent(self, event):
         super().showEvent(event)
         self.play_sound()
+        self.init_camera()
 
     def hideEvent(self, event):
         super().hideEvent(event)
@@ -202,7 +218,7 @@ class Ui_NewStandBy(QtWidgets.QWidget):
     # 下一步
     def on_next_clicked(self):
         self.pushButton_clicked.emit()
-        print("Next button clicked.")  # 添加这一行来调试
+        print("Next button clicked.")  
 
     # 字體
     def load_custom_font(self, font_path):
@@ -230,17 +246,11 @@ class Ui_NewStandBy(QtWidgets.QWidget):
             self.hand_gestures_thread.start()
 
     # 手勢停止
-    # def stop_hand_gestures_detection(self):
-    #     if self.hand_gestures_thread is not None and self.hand_gestures_thread.is_alive():
-    #         self.stop_signal.set()  
-    #         self.hand_gestures_thread.join()
-    #     self.cancel_timer()  # 在這裡取消計時器
-
     def stop_hand_gestures_detection(self):
         if self.hand_gestures_thread is not None and self.hand_gestures_thread.is_alive():
-            self.stop_signal.set()  # 停止手勢偵測執行緒
+            self.stop_signal.set() 
             self.hand_gestures_thread.join()
-        self.cancel_timer()  # 取消計時器
+        self.cancel_timer()  
 
         # 確保攝影機持續運行
         if self.camera.state() != QCamera.ActiveState:
@@ -248,41 +258,25 @@ class Ui_NewStandBy(QtWidgets.QWidget):
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
-            if self.stop_signal.is_set():  # 檢查要不要停止
+            if self.stop_signal.is_set(): 
                 break
             self.handle_gesture(gesture)
 
     # 按鈕手勢對比
-    # def handle_gesture(self, gesture):
-    #     print(f"Detected gesture: {gesture}")
-    #     if gesture == 'back':
-    #         self.highlight_button(self.prevButton)
-    #         #self.on_prev_clicked()
-    #         threading.Timer(3, self.on_prev_clicked).start()
-    #         self.stop_signal.set()
-    #     elif gesture == 'ok':
-    #         self.highlight_button(self.pushButton)
-    #         threading.Timer(3, self.on_next_clicked).start()
-    #         print("OK gesture detected, about to trigger next button.")  # Debug statement
-    #         self.stop_signal.set()
-
     def handle_gesture(self, gesture):
         print(f"Detected gesture: {gesture}")
         if gesture == 'back':
             self.highlight_button(self.prevButton)
+            #self.on_prev_clicked()
             threading.Timer(3, self.on_prev_clicked).start()
             self.stop_signal.set()
         elif gesture == 'ok':
             self.highlight_button(self.pushButton)
             threading.Timer(3, self.on_next_clicked).start()
-            print("OK gesture detected, about to trigger next button.")
+            print("OK gesture detected, about to trigger next button.")  # Debug statement
             self.stop_signal.set()
 
-        # 確保攝影機保持活躍
-        if self.camera.state() != QCamera.ActiveState:
-            self.camera.start()
-
-     # 計時器開始
+    # 計時器開始
     def start_timer(self, button_text):
         self.cancel_timer()  
         self.timer = threading.Timer(3, self.execute_button_action, args=(button_text,))
@@ -292,7 +286,7 @@ class Ui_NewStandBy(QtWidgets.QWidget):
     def cancel_timer(self):
         if self.timer is not None:
             self.timer.cancel()
-            self.timer = None  # 重置計時器
+            self.timer = None  
 
     # 按鈕的紅框
     def highlight_button(self, button):
@@ -315,6 +309,7 @@ class Ui_NewStandBy(QtWidgets.QWidget):
             bytes_per_line = ch * w
             qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
             self.video_label.setPixmap(QPixmap.fromImage(qt_image))
+            print("ok123")
         else:
             print("Failed to read from camera.")
 

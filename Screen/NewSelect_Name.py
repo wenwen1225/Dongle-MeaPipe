@@ -1,10 +1,9 @@
 import os
 import random
 import threading
-from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
-from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QTimer, QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtMultimediaWidgets import QVideoWidget
 from KL_MP_Mix import detect_hand_gestures
 
 class Ui_NewSelectName(QtWidgets.QWidget):
@@ -17,9 +16,9 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.timer = None
         self.button_texts = self.load_button_texts('Data/camp.txt')  # 團隊名稱txt檔
         self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf') # 字體位置
-        self.media_player = QMediaPlayer()  # 初始化媒體播放器
+        self.media_player = QMediaPlayer()  
         self.setupUi()
-        self.schedule_sound_playback()  # 計畫聲音播放
+        self.schedule_sound_playback()  
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -33,11 +32,11 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName("verticalLayout")
         self.verticalLayout.setAlignment(QtCore.Qt.AlignTop)
-        self.verticalLayout.setContentsMargins(10, 10, 10, 10)  # 邊界
+        self.verticalLayout.setContentsMargins(20, 50, 10, 10) 
 
         # 請選擇團隊名稱 標題
         self.label = QtWidgets.QLabel(self.centralwidget)
-        if self.custom_font:  # 如果字體顯示成功，使用該字體
+        if self.custom_font: 
             font = QtGui.QFont(self.custom_font, 48)
             self.label.setFont(font)
         else:
@@ -54,55 +53,47 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         else:
             self.gesture_label.setFont(QtGui.QFont("標楷體", 24))
         self.gesture_label.setAlignment(QtCore.Qt.AlignCenter)
-
-        gesture_text = '<p>請比出手勢'
-        gesture_image_filenames = [f'icon{i}.png' for i in range(1, 4)]
-
-        for filename in gesture_image_filenames:
-            img_path = os.path.join(os.path.dirname(__file__), 'img', filename)
-            gesture_text += f' <img src="{img_path}" width="150"/>'  # 圖片大小
-        gesture_text += ' 來進行選擇團隊名稱!</p>'
-
+        gesture_text = '請比出手勢來進行選擇團隊名稱!'
         self.gesture_label.setText(gesture_text)
         self.verticalLayout.addWidget(self.gesture_label)
 
-        # 初始化 groupBox
+        # GroupBox
         self.groupBox = QtWidgets.QGroupBox(self.centralwidget)
-        self.groupBox.setObjectName("groupBox")
         self.groupBox.setStyleSheet("QGroupBox { border: none; }")
         self.groupBox.setTitle("")
-
-        self.verticalLayoutGroupBox = QtWidgets.QVBoxLayout(self.groupBox)
-        self.verticalLayoutGroupBox.setObjectName("verticalLayoutGroupBox")
-
-        spacer = QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacer)
-
-        # 團隊按鈕，依照 camp.txt 中的文字
-        if len(self.button_texts) >= 3:
-            img_folder = os.path.join(os.path.dirname(__file__), 'img')  # 圖片資料夾
-            available_images = [f for f in os.listdir(img_folder) if 'role' in f and f.endswith(('.png', '.jpg', '.jpeg'))]
-            selected_images = random.sample(available_images, 3)  # 隨機選取 3 張不重複的圖片
-            selected_texts = random.sample(self.button_texts, 3)  # 隨機選擇 3 行不重複的文字
-
-            self.button1 = self.add_button_with_icon(selected_texts[0], selected_images[0])
-            self.button2 = self.add_button_with_icon(selected_texts[1], selected_images[1])
-            self.button3 = self.add_button_with_icon(selected_texts[2], selected_images[2])
-        else:
-            print("camp.txt 文件中需要至少有 3 行文字")
-
+        self.gridLayout = QtWidgets.QGridLayout(self.groupBox)
+        self.gridLayout.setContentsMargins(0, 0, 0, 0)
+        self.gridLayout.setSpacing(10)
         self.verticalLayout.addWidget(self.groupBox)
+
+        # 團隊按鈕與圖片
+        if len(self.button_texts) >= 6:
+            selected_images = ["icon1.png", "icon2.png", "icon3.png", "icon4.png", "icon8.png", "icon9.png"]
+            selected_texts = random.sample(self.button_texts, 6)
+
+            # 上排
+            self.button1 = self.add_button_with_icon(selected_texts[0], selected_images[0], 0, 0)
+            self.button2 = self.add_button_with_icon(selected_texts[1], selected_images[1], 0, 1)
+            self.button3 = self.add_button_with_icon(selected_texts[2], selected_images[2], 0, 2)
+
+            # 下排
+            self.button4 = self.add_button_with_icon(selected_texts[3], selected_images[3], 1, 0)
+            self.button5 = self.add_button_with_icon(selected_texts[4], selected_images[4], 1, 1)
+            self.button6 = self.add_button_with_icon(selected_texts[5], selected_images[5], 1, 2)
+        else:
+            print("camp.txt 文件中需要至少有 6 行文字")
+
         self.setLayout(self.verticalLayout)
 
         self.retranslateUi()
 
     # 設定聲音播放計畫
     def schedule_sound_playback(self):
-        QTimer.singleShot(2000, self.play_sound)  # 2 秒後執行 play_sound
+        QTimer.singleShot(2000, self.play_sound)  # 2秒後執行 play_sound
 
     # 播放聲音的方法
     def play_sound(self):
-        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Select_Name_sound.mp3')  # MP3 文件路徑
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Select_Name_sound.mp3')  
         if not os.path.exists(mp3_path):
             print(f"MP3 檔案不存在: {mp3_path}")
             return
@@ -110,7 +101,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         url = QUrl.fromLocalFile(mp3_path)
         content = QMediaContent(url)
         self.media_player.setMedia(content)
-        self.media_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.media_player.setVolume(80) 
         self.media_player.play()
 
     # 標題
@@ -119,10 +110,19 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.label.setText(_translate("MainWindow", "請選擇團隊名稱"))
 
     # 按鈕+圖片
-    def add_button_with_icon(self, text, icon_filename):
+    def add_button_with_icon(self, text, icon_filename, row, column):
         button_layout = QtWidgets.QHBoxLayout()
         button_layout.setAlignment(QtCore.Qt.AlignCenter)
 
+        # 左側圖片
+        left_icon_label = QtWidgets.QLabel()
+        left_img_path = os.path.join(os.path.dirname(__file__), 'imgrole', icon_filename)
+        left_pixmap = QtGui.QPixmap(left_img_path)
+        left_icon_label.setPixmap(left_pixmap)
+        left_icon_label.setFixedSize(200, 200)
+        left_icon_label.setScaledContents(True)
+
+        # 按鈕
         button = QtWidgets.QPushButton(text, self.groupBox)
         if self.custom_font:
             font = QtGui.QFont(self.custom_font, 30)
@@ -131,21 +131,16 @@ class Ui_NewSelectName(QtWidgets.QWidget):
             button.setFont(QtGui.QFont("標楷體", 30))
         button.setMinimumHeight(200)
         button.setFixedWidth(400)
-
-        img_path = os.path.join(os.path.dirname(__file__), 'img', icon_filename)
-        pixmap = QtGui.QPixmap(img_path)
-        icon_label = QtWidgets.QLabel()
-        icon_label.setPixmap(pixmap)
-        icon_label.setFixedSize(200, 200)
-        icon_label.setScaledContents(True)
-
-        button_layout.addWidget(icon_label)
+        
+        # 添加到按鈕布局
+        button_layout.addWidget(left_icon_label)
         button_layout.addWidget(button)
 
-        self.verticalLayoutGroupBox.addLayout(button_layout)
+        # 將按鈕布局添加到主布局
+        self.gridLayout.addLayout(button_layout, row, column)
         button.clicked.connect(lambda: self.role_selected.emit(text))  
         return button
-    
+
     # 讀取txt的內容
     def load_button_texts(self, file_path):
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -172,7 +167,7 @@ class Ui_NewSelectName(QtWidgets.QWidget):
 
     # 手勢開始
     def start_hand_gestures_detection(self):
-        self.stop_signal.clear()  # 清除資料
+        self.stop_signal.clear()  
         self.hand_gestures_thread = threading.Thread(target=self.hand_gestures_detection, daemon=True)
         self.hand_gestures_thread.start()
 
@@ -181,17 +176,17 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         if self.hand_gestures_thread is not None:
             self.stop_signal.set()
             self.hand_gestures_thread.join() 
-        self.cancel_timer()  # 取消計時器
+        self.cancel_timer()  
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
-            if self.stop_signal.is_set():  # 檢查要不要停止
+            if self.stop_signal.is_set():  
                 break
             self.handle_gesture(gesture)
 
     # 按鈕手勢對比
     def handle_gesture(self, gesture):
-        print(f"Detected gesture: {gesture}")  # 測試是否抓到手勢
+        print(f"Detected gesture: {gesture}")  
         if gesture == '1':
             self.highlight_button(self.button1)
             threading.Timer(3, self.execute_button_action, args=(self.button1.text(),)).start()
@@ -203,6 +198,18 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         elif gesture == '3':
             self.highlight_button(self.button3)
             threading.Timer(3, self.execute_button_action, args=(self.button3.text(),)).start()
+            self.stop_signal.set()  
+        elif gesture == '4':
+            self.highlight_button(self.button4)
+            threading.Timer(3, self.execute_button_action, args=(self.button4.text(),)).start()
+            self.stop_signal.set()  
+        elif gesture == '5':
+            self.highlight_button(self.button5)
+            threading.Timer(5, self.execute_button_action, args=(self.button5.text(),)).start()
+            self.stop_signal.set()  
+        elif gesture == '6':
+            self.highlight_button(self.button6)
+            threading.Timer(3, self.execute_button_action, args=(self.button6.text(),)).start()
             self.stop_signal.set()  
 
     def execute_button_action(self, button_text):
@@ -219,11 +226,11 @@ class Ui_NewSelectName(QtWidgets.QWidget):
     def cancel_timer(self):
         if self.timer is not None:
             self.timer.cancel()
-            self.timer = None  # 重置計時器
+            self.timer = None 
 
     # 按鈕的紅框
     def highlight_button(self, button):
-        self.reset_button_styles()  # 清除樣式
+        self.reset_button_styles()  
         button.setStyleSheet("border: 5px solid red;")  
 
     # 點選到其他的按鈕會切換紅框
@@ -231,11 +238,14 @@ class Ui_NewSelectName(QtWidgets.QWidget):
         self.button1.setStyleSheet("")  
         self.button2.setStyleSheet("")
         self.button3.setStyleSheet("")
+        self.button4.setStyleSheet("")
+        self.button5.setStyleSheet("")
+        self.button6.setStyleSheet("")    
 
     # 關閉資訊
     def closeEvent(self, event):
-        self.stop_hand_gestures_detection()  # 停止手勢檢測
-        event.accept()  # 確保關閉事件被接受
+        self.stop_hand_gestures_detection()  
+        event.accept()  
 
 if __name__ == "__main__":
     import sys

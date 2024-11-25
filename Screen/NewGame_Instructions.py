@@ -1,9 +1,7 @@
 import os
 import threading
 from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtMultimedia import QMediaContent
 from PyQt5.QtCore import QUrl, QTimer
 from KL_MP_Mix import detect_hand_gestures
 
@@ -15,18 +13,18 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         super().__init__(parent)
         self.hand_gestures_thread = None
         self.stop_signal = threading.Event()  
-        self.timer = None  # 計時器初始化為 None
-        self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf')  # 字體位置
+        self.timer = None  
+        self.custom_font = self.load_custom_font('Font\\NaikaiFont-Bold.ttf') 
         self.setupUi() 
 
         # 影片及聲音
-        self.video_path = os.path.abspath('Screen/game_video.mp4') # 影片路徑
+        self.video_path = os.path.abspath('Screen/game_video.mp4') 
         self.media_player = QtMultimedia.QMediaPlayer(self)
         self.media_player.setVideoOutput(self.video_player)
-        self.media_player.setVolume(100)  # 設定影片音量為最大
+        # self.media_player.setVolume(100)  
         self.media_player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(self.video_path)))
 
-        self.audio_player = QtMultimedia.QMediaPlayer(self)  # 初始化媒體播放器
+        self.audio_player = QtMultimedia.QMediaPlayer(self)  
 
     def setupUi(self):
         self.setObjectName("MainWindow")
@@ -49,26 +47,26 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
 
         # 遊戲規則說明-標題
         self.label = QtWidgets.QLabel(self.groupBox)
-        if self.custom_font:  # 如果字體顯示成功，使用該字體
+        if self.custom_font:  
             font = QtGui.QFont(self.custom_font, 48)
             self.label.setFont(font)
         else:
             self.label.setFont(QtGui.QFont("標楷體", 48))  
         self.label.setObjectName("label")
         self.verticalLayoutGroupBox.addWidget(self.label)
-        self.label.setAlignment(QtCore.Qt.AlignCenter)  # 置中對齊
+        self.label.setAlignment(QtCore.Qt.AlignCenter) 
         self.verticalLayoutGroupBox.addWidget(self.label)
 
         # 團隊名稱
         self.label_5 = QtWidgets.QLabel(self.groupBox)
-        if self.custom_font:  # 如果字體顯示成功，使用該字體
+        if self.custom_font: 
             font = QtGui.QFont(self.custom_font, 25)
             self.label_5.setFont(font)
         else:
             self.label_5.setFont(QtGui.QFont("標楷體", 25))  
         self.label_5.setObjectName("label_5")
         self.verticalLayoutGroupBox.addWidget(self.label_5)
-        self.label_5.setAlignment(QtCore.Qt.AlignCenter)  # 置中對齊
+        self.label_5.setAlignment(QtCore.Qt.AlignCenter)  
         self.verticalLayoutGroupBox.addWidget(self.label_5)
 
         spacerItem = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -76,17 +74,16 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
 
         # 影片撥放
         self.video_player = QtMultimediaWidgets.QVideoWidget(self.centralwidget)
-        self.video_player.setFixedSize(1280, 720)  # 影片尺寸
+        self.video_player.setFixedSize(1280, 720)  
         self.video_player.setObjectName("video_player")
         self.verticalLayoutGroupBox.addWidget(self.video_player)  
 
         # 使用 QSpacerItem 來調整影片的位置
         spacerItemTop = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayoutGroupBox.addItem(spacerItemTop)  # 在影片上方添加 spacer
+        self.verticalLayoutGroupBox.addItem(spacerItemTop)  
         self.verticalLayoutGroupBox.addWidget(self.video_player, alignment=QtCore.Qt.AlignHCenter)  # 置中對齊
         spacerItemBottom = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayoutGroupBox.addItem(spacerItemBottom)  # 在影片下方添加 spacer
-
+        self.verticalLayoutGroupBox.addItem(spacerItemBottom)  
         # 創建 QMediaPlayer
         self.media_player = QtMultimedia.QMediaPlayer(self)
         self.media_player.setVideoOutput(self.video_player)
@@ -176,11 +173,11 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
     
     # 設定聲音播放計畫
     def schedule_sound_playback(self):
-        QTimer.singleShot(2000, self.play_sound)  # 1 秒後執行 play_sound
+        QTimer.singleShot(2000, self.play_sound)  # 2秒後執行 play_sound
 
     # 播放聲音的方法
     def play_sound(self):
-        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Game_Instructions_sound.mp3')  # MP3 文件路徑
+        mp3_path = os.path.join(os.path.dirname(__file__), 'sound', 'Game_Instructions_sound.mp3') 
         if not os.path.exists(mp3_path):
             print(f"MP3 檔案不存在: {mp3_path}")
             return
@@ -188,20 +185,20 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         url = QUrl.fromLocalFile(mp3_path)
         content = QMediaContent(url)
         self.audio_player.setMedia(content)
-        self.audio_player.setVolume(70)  # 設置音量，範圍 0-100
+        self.audio_player.setVolume(80) 
         self.audio_player.play()
 
-     # 到這個頁面才會撥放影片
+     # 到這個頁面才會撥放影片與聲音
     def showEvent(self, event):
         super().showEvent(event)
         if os.path.exists(self.video_path):
-            self.media_player.play()  # 開始播放影片
-            self.media_player.setVolume(100)  # 開啟影片時，音量自動播放
+            self.media_player.play()  
+            self.media_player.setVolume(100)  
         self.play_sound()
 
     def hideEvent(self, event):
         super().hideEvent(event)
-        self.media_player.pause()  # 切換頁面時暫停影片播放及聲音
+        self.media_player.pause()  
         self.audio_player.stop()
 
     # 說明
@@ -217,21 +214,21 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
     # 檢查影片的狀況
     def check_media_status(self, status):
         if status == QtMultimedia.QMediaPlayer.EndOfMedia:
-            self.media_player.setPosition(0)  # 從頭播放
-            self.media_player.play()  # 確保影片播放
+            self.media_player.setPosition(0)  
+            self.media_player.play()  
         elif status == QtMultimedia.QMediaPlayer.InvalidMedia:
             print("影片播放失敗，檢查影片文件格式或路徑。")
 
     # 下一步
     def on_next_clicked(self):
         self.nextButton_clicked.emit()
-        self.media_player.setPosition(0)  # 重置播放位置
+        self.media_player.setPosition(0) 
         self.media_player.play()
 
     # 上一步
     def on_prev_clicked(self):
         self.prevButton_clicked.emit()
-        self.media_player.setPosition(0)  # 重置播放位置
+        self.media_player.setPosition(0) 
         self.media_player.play()
         
     # 上一頁的團隊名稱
@@ -267,11 +264,11 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
         if self.hand_gestures_thread is not None:
             self.stop_signal.set()
             self.hand_gestures_thread.join()
-        self.cancel_timer()  # 在這裡取消計時器
+        self.cancel_timer()  
 
     def hand_gestures_detection(self):
         for gesture in detect_hand_gestures():
-            if self.stop_signal.is_set():  # 檢查要不要停止
+            if self.stop_signal.is_set():  
                 break
             self.handle_gesture(gesture)
 
@@ -297,11 +294,11 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
     def cancel_timer(self):
         if self.timer is not None:
             self.timer.cancel()
-            self.timer = None  # 重置計時器
+            self.timer = None  
 
     # 按鈕的紅框
     def highlight_button(self, button):
-        self.reset_button_styles()  # 清除樣式
+        self.reset_button_styles()  
         button.setStyleSheet("border: 5px solid red;")  
 
     # 點選到其他的按鈕會切換紅框
@@ -312,7 +309,7 @@ class Ui_NewGameInstructions(QtWidgets.QWidget):
     # 關閉資訊
     def closeEvent(self, event):
         self.stop_hand_gestures_detection()
-        self.media_player.stop()  # 停止影片
+        self.media_player.stop()  
         super().closeEvent(event)
 
 if __name__ == "__main__":
